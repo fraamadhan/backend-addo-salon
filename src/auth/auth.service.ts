@@ -88,7 +88,7 @@ export class AuthService {
     const isMatch = await bcrypt.compare(password, existingUser.password);
     if (!isMatch) {
       throw new HttpException(
-        'Invalid email or password',
+        'Email atau password salah',
         HttpStatus.UNAUTHORIZED,
       );
     }
@@ -272,7 +272,10 @@ export class AuthService {
           break;
         }
         default:
-          throw new HttpException('Invalid type', HttpStatus.BAD_REQUEST);
+          throw new HttpException(
+            'Tipe yang dimasukkan salah',
+            HttpStatus.BAD_REQUEST,
+          );
       }
 
       return token;
@@ -318,7 +321,10 @@ export class AuthService {
         break;
       }
       default:
-        throw new HttpException('Invalid type', HttpStatus.BAD_REQUEST);
+        throw new HttpException(
+          'Tipe yang dimasukkan salah',
+          HttpStatus.BAD_REQUEST,
+        );
     }
     if (!token) {
       throw new HttpException('Token tidak ditemukan', HttpStatus.NOT_FOUND);
@@ -357,7 +363,10 @@ export class AuthService {
         return data;
       }
       default:
-        throw new HttpException('Invalid type', HttpStatus.BAD_REQUEST);
+        throw new HttpException(
+          'Tipe yang dimasukkan salah',
+          HttpStatus.BAD_REQUEST,
+        );
     }
   }
 
