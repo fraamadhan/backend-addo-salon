@@ -79,7 +79,7 @@ export class AuthService {
       await this.addEmailVerificationJob(existingUser.email, token);
 
       throw new HttpException(
-        'Pengguna belum terverifikasi. Verifikasi email terlebih dahulu',
+        'Pengguna belum terverifikasi. Cek email Anda untuk verifikasi email.',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -162,7 +162,7 @@ export class AuthService {
 
     if (!existingUser.is_verified) {
       throw new HttpException(
-        'Pengguna belum terverifikasi. Verifikasi email terlebih dahulu',
+        'Pengguna belum terverifikasi. Cek email Anda untuk verifikasi email',
         HttpStatus.BAD_REQUEST,
       );
     }
