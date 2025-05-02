@@ -43,7 +43,7 @@ export class AuthService {
     });
 
     if (existingUser) {
-      throw new HttpException('User already exists', HttpStatus.BAD_REQUEST);
+      throw new HttpException('Email sudah digunakan', HttpStatus.BAD_REQUEST);
     }
 
     //hash password
@@ -63,7 +63,10 @@ export class AuthService {
     //check if user exists
     const existingUser = await this.userModel.findOne({ email }).lean().exec();
     if (!existingUser) {
-      throw new HttpException('User does not exist!', HttpStatus.UNAUTHORIZED);
+      throw new HttpException(
+        'Pengguna tidak ditemukan',
+        HttpStatus.UNAUTHORIZED,
+      );
     }
 
     //check if user is verified
@@ -76,7 +79,7 @@ export class AuthService {
       await this.addEmailVerificationJob(existingUser.email, token);
 
       throw new HttpException(
-        'User is not verified! please verify your email first',
+        'Pengguna belum terverifikasi. Verifikasi email terlebih dahulu',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -101,7 +104,7 @@ export class AuthService {
 
   async verifyEmail(token: string) {
     if (!token || token.length === 0) {
-      throw new HttpException('Token is missing', HttpStatus.BAD_REQUEST);
+      throw new HttpException('Token tidak ditemukan', HttpStatus.BAD_REQUEST);
     }
 
     const existingToken = await this.getVerificationTokenByToken(
@@ -110,14 +113,14 @@ export class AuthService {
     );
 
     if (!existingToken) {
-      throw new HttpException('Token does not exist!', HttpStatus.BAD_REQUEST);
+      throw new HttpException('Token tidak ditemukan', HttpStatus.BAD_REQUEST);
     }
 
     const isExpired = new Date(existingToken.expired_time) < new Date();
 
     if (isExpired) {
       throw new HttpException(
-        'Token has expired. Please send the verification email again by login',
+        'Token sudah kedaluwarsa. Tolong kirim verifikasi email dengan cara login',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -127,7 +130,10 @@ export class AuthService {
     });
 
     if (!existingUser) {
-      throw new HttpException('User does not exist!', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'Pengguna tidak ditemukan',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     await this.userModel.updateOne(
@@ -148,12 +154,15 @@ export class AuthService {
   async forgotPassword(email: string) {
     const existingUser = await this.userModel.findOne({ email });
     if (!existingUser) {
-      throw new HttpException('User does not exist!', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'Pengguna tidak ditemukan',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     if (!existingUser.is_verified) {
       throw new HttpException(
-        'User is not verified! Please verify your email first',
+        'Pengguna belum terverifikasi. Verifikasi email terlebih dahulu',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -171,7 +180,7 @@ export class AuthService {
         });
       } else {
         throw new HttpException(
-          'Please check your email to reset your password',
+          'Tolong cek email Anda untuk mengatur ulang kata sandi',
           HttpStatus.BAD_REQUEST,
         );
       }
@@ -184,7 +193,7 @@ export class AuthService {
     confirmPassword: string,
   ) {
     if (!token || token.length === 0) {
-      throw new HttpException('Token is missing', HttpStatus.BAD_REQUEST);
+      throw new HttpException('Token tidak ditemukan', HttpStatus.BAD_REQUEST);
     }
 
     const existingToken = await this.getVerificationTokenByToken(
@@ -193,23 +202,20 @@ export class AuthService {
     );
 
     if (!existingToken) {
-      throw new HttpException('Token does not exist!', HttpStatus.BAD_REQUEST);
+      throw new HttpException('Token tidak ditemukan', HttpStatus.BAD_REQUEST);
     }
 
     const isExpired = new Date(existingToken.expired_time) < new Date();
 
     if (isExpired) {
       throw new HttpException(
-        'Token has expired. Please try to reset your password again',
+        'Token sudah kedaluwarsa. Tolong kirim verifikasi email dengan cara login',
         HttpStatus.BAD_REQUEST,
       );
     }
 
     if (password !== confirmPassword) {
-      throw new HttpException(
-        'Password does not match',
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException('Password tidak cocok', HttpStatus.BAD_REQUEST);
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -290,7 +296,10 @@ export class AuthService {
           email,
         });
         if (!data) {
-          throw new HttpException('Token not found', HttpStatus.NOT_FOUND);
+          throw new HttpException(
+            'Token tidak ditemukan',
+            HttpStatus.NOT_FOUND,
+          );
         }
         token = data.token;
         break;
@@ -300,7 +309,10 @@ export class AuthService {
           email,
         });
         if (!data) {
-          throw new HttpException('Token not found', HttpStatus.NOT_FOUND);
+          throw new HttpException(
+            'Token tidak ditemukan',
+            HttpStatus.NOT_FOUND,
+          );
         }
         token = data.token;
         break;
@@ -309,7 +321,7 @@ export class AuthService {
         throw new HttpException('Invalid type', HttpStatus.BAD_REQUEST);
     }
     if (!token) {
-      throw new HttpException('Token not found', HttpStatus.NOT_FOUND);
+      throw new HttpException('Token tidak ditemukan', HttpStatus.NOT_FOUND);
     }
 
     return token;
@@ -325,7 +337,10 @@ export class AuthService {
           token,
         });
         if (!data) {
-          throw new HttpException('Token not found', HttpStatus.NOT_FOUND);
+          throw new HttpException(
+            'Token tidak ditemukan',
+            HttpStatus.NOT_FOUND,
+          );
         }
         return data;
       }
@@ -334,7 +349,10 @@ export class AuthService {
           token,
         });
         if (!data) {
-          throw new HttpException('Token not found', HttpStatus.NOT_FOUND);
+          throw new HttpException(
+            'Token tidak ditemukan',
+            HttpStatus.NOT_FOUND,
+          );
         }
         return data;
       }

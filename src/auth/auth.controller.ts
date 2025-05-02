@@ -42,7 +42,7 @@ export class AuthController {
 
       return responseSuccess(
         HttpStatus.CREATED,
-        'Please check your email to verify email address',
+        'Tolong cek email Anda untuk melakukan verifikasi email',
         data,
       );
     } catch (error: any) {
@@ -64,7 +64,7 @@ export class AuthController {
 
       return responseSuccess(
         HttpStatus.OK,
-        'User logged in successfully',
+        'Anda berhasil masuk ke aplikasi',
         data,
       );
     } catch (error: any) {
@@ -84,7 +84,7 @@ export class AuthController {
     try {
       await this.authService.verifyEmail(token);
 
-      return responseSuccess(HttpStatus.OK, 'Email verified successfully');
+      return responseSuccess(HttpStatus.OK, 'Email berhasil diverifikasi');
     } catch (error: any) {
       this.logger.errorString(error as string);
       if (error.response && error.status) {
@@ -115,7 +115,10 @@ export class AuthController {
       this.logger.log(
         `[AuthController - forgotPassword] Password reset link sent to ${body.email}`,
       );
-      return responseSuccess(HttpStatus.OK, 'Email sent successfully');
+      return responseSuccess(
+        HttpStatus.OK,
+        'Tolong cek email Anda untuk atur ulang kata sandi',
+      );
     } catch (error: any) {
       this.logger.errorString(error as string);
       if (error.response && error.status) {
@@ -142,7 +145,7 @@ export class AuthController {
       this.logger.log(
         `[AuthController - resetPassword] Password reset successfully`,
       );
-      return responseSuccess(HttpStatus.OK, 'Password reset successfully');
+      return responseSuccess(HttpStatus.OK, 'Password berhasil diubah');
     } catch (error: any) {
       this.logger.errorString(error as string);
       if (error.response && error.status) {
