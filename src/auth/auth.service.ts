@@ -88,7 +88,7 @@ export class AuthService {
     const isMatch = await bcrypt.compare(password, existingUser.password);
     if (!isMatch) {
       throw new HttpException(
-        'Email atau password salah',
+        'Email atau kata sandi salah',
         HttpStatus.UNAUTHORIZED,
       );
     }
