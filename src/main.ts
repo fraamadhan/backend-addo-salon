@@ -15,6 +15,33 @@ async function bootstrap() {
       },
     }),
   );
+
+  const whitelist = (process.env.CORS_ORIGIN_OPTIONS ?? '').split(',');
+  console.log(whitelist);
+  const corsOptions = {
+    origin: function (
+      origin: string | undefined,
+      callback: (err: Error | null, allow: boolean) => void,
+    ) {
+      if (!origin || origin === undefined) {
+        console.log('Origin undefined');
+        return callback(null, true);
+      }
+      if (whitelist.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        console.log('blocked cors for:', origin);
+        callback(new Error('Not allowed by CORS'), false);
+      }
+    },
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+    credentials: true,
+    exposedHeaders: ['Content-Disposition'],
+  };
+
+  app.enableCors(corsOptions);
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap().catch((err) => {
