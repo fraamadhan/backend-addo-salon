@@ -121,7 +121,7 @@ export class AuthService {
     if (isExpired) {
       throw new HttpException(
         'Token sudah kedaluwarsa. Tolong kirim verifikasi email dengan cara login',
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.GONE,
       );
     }
 
@@ -210,7 +210,7 @@ export class AuthService {
     if (isExpired) {
       throw new HttpException(
         'Token sudah kedaluwarsa. Tolong kirim verifikasi email dengan cara login',
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.GONE,
       );
     }
 
