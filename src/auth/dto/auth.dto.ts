@@ -33,7 +33,6 @@ export class LoginDTO {
   @IsString()
   @IsNotEmpty()
   @MinLength(4)
-  @MaxLength(12)
   @Matches(/((?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
     message: 'password too weak',
   })
@@ -50,7 +49,6 @@ export class ResetPasswordDTO {
   @IsString()
   @IsNotEmpty()
   @MinLength(4)
-  @MaxLength(12)
   @Matches(/((?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
     message: 'password too weak',
   })
@@ -59,7 +57,6 @@ export class ResetPasswordDTO {
   @IsString()
   @IsNotEmpty()
   @MinLength(4)
-  @MaxLength(12)
   @Matches(/((?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
     message: 'password too weak',
   })
