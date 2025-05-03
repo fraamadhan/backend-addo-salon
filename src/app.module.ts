@@ -8,8 +8,6 @@ import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { BullModule } from '@nestjs/bull';
-import { JwtAuthGuard } from './auth/jwt-auth.guard';
-import { JwtModule, JwtService } from '@nestjs/jwt';
 
 @Module({
   imports: [

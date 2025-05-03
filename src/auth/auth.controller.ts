@@ -98,7 +98,7 @@ export class AuthController {
     // return this.authService.findOne(+id);
   }
 
-  @Get('/forgot-password')
+  @Post('/forgot-password')
   async forgotPassword(@Body() body: ForgotPasswordDTO) {
     try {
       await this.authService.forgotPassword(body.email);
