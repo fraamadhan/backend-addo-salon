@@ -6,6 +6,7 @@ import {
   Param,
   HttpStatus,
   Get,
+  Query,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
@@ -156,6 +157,25 @@ export class AuthController {
         'Internal Server Error',
       );
     }
+  }
+
+  @Get('/verify-token')
+  async verifyToken(@Query('token') token: string) {
+    try {
+      await this.authService.verifyToken(token);
+
+      return responseSuccess(HttpStatus.OK, 'Token berhasil diverifikasi');
+    } catch (error: any) {
+      this.logger.errorString(error as string);
+      if (error.response && error.status) {
+        return responseError(error.status, error.response);
+      }
+      return responseError(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        'Internal Server Error',
+      );
+    }
+    // return this.authService.findOne(+id);
   }
 
   // @Delete('logout')

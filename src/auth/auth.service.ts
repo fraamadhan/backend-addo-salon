@@ -166,25 +166,6 @@ export class AuthService {
         HttpStatus.BAD_REQUEST,
       );
     }
-
-    const existingToken = await this.passwordResetModel.findOne({
-      email,
-    });
-
-    if (existingToken) {
-      const isExpired = new Date(existingToken.expired_time) < new Date();
-
-      if (isExpired) {
-        await this.passwordResetModel.deleteOne({
-          _id: existingToken.id,
-        });
-      } else {
-        throw new HttpException(
-          'Tolong cek email Anda untuk mengatur ulang kata sandi',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-    }
   }
 
   async resetPassword(
@@ -209,7 +190,7 @@ export class AuthService {
 
     if (isExpired) {
       throw new HttpException(
-        'Token sudah kedaluwarsa. Tolong kirim verifikasi email dengan cara login',
+        'Token Anda sudah kedaluwarsa. Silakan kirim ulang permintaan untuk reset kata sandi',
         HttpStatus.GONE,
       );
     }
@@ -232,6 +213,35 @@ export class AuthService {
     await this.passwordResetModel.deleteOne({
       _id: existingToken.id,
     });
+  }
+
+  async verifyToken(token: string) {
+    if (!token || token.length === 0) {
+      throw new HttpException('Token tidak ditemukan', HttpStatus.BAD_REQUEST);
+    }
+
+    const existingToken = await this.getVerificationTokenByToken(
+      token,
+      EmailVerificationType.FORGOT_PASSWORD,
+    );
+
+    if (!existingToken) {
+      throw new HttpException('Token tidak ditemukan', HttpStatus.BAD_REQUEST);
+    }
+
+    const isExpired = new Date(existingToken.expired_time) < new Date();
+    console.log(isExpired);
+
+    if (isExpired) {
+      await this.passwordResetModel.deleteOne({
+        _id: existingToken.id,
+      });
+
+      throw new HttpException(
+        'Token Anda sudah kedaluwarsa. Silakan kirim ulang permintaan untuk reset kata sandi',
+        HttpStatus.GONE,
+      );
+    }
   }
 
   async generateVerificationToken(email: string, type: EmailVerificationType) {
@@ -378,7 +388,7 @@ export class AuthService {
     await this.emailQueue.add('forgot-password', { email, token });
   }
   async sendEmailVerificationForgotPassword(email: string, token: string) {
-    const url = `${process.env.FE_URL}/auth/forgot-password/${token}`;
+    const url = `${process.env.FE_URL}/auth/reset-password/${token}`;
     const subject = 'Reset Password';
     const templateBody = mailTemplate(
       EmailVerificationType.FORGOT_PASSWORD,

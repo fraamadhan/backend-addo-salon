@@ -136,7 +136,7 @@ export const mailTemplate = (
                                         margin: 0 0 20px;
                                       "
                                     >
-                                      Follow this link to reset your password
+                                      Ikuti link ini untuk mereset kata sandi
                                     </p>
                                     <table border="0" cellpadding="0" cellspacing="0">
                                       <tr>
@@ -158,7 +158,7 @@ export const mailTemplate = (
                                               display: inline-block;
                                             "
                                           >
-                                            Reset Password
+                                            Reset Kata Sandi
                                           </a>
                                         </td>
                                       </tr>
@@ -167,10 +167,9 @@ export const mailTemplate = (
                                 </tr>
                                 <tr>
                                   <td>
+                                    <p style="color:rgb(208, 43, 43); background-color:rgb(239, 136, 136); padding:10px"> Mohon diperhatikan, formulir reset kata sandi ini akan kedaluwarsa dalam waktu 12 menit setelah email ini dikirimkan </p>
                                     <p>
-                                      If the button above doesn't work, you can also
-                                      reset your password by copying and pasting the
-                                      following link into your browser:
+                                      Jika tombol di atas tidak berfungsi, Anda juga dapat mengatur ulang kata sandi dengan menyalin dan menempelkan tautan berikut ke browser Anda:
                                     </p>
                                     <p>${url}</p>
                                   </td>
@@ -278,8 +277,7 @@ export const mailTemplate = (
                           <tr>
                             <td align="center" style="color: #aaaaaa; font-size: 12px">
                               <p style="margin: 0 0 5px">
-                                You received this email because you signed up to our
-                                website.
+                                Anda mendapatkan email ini karena Anda mendaftar di aplikasi kami
                               </p>
                               <p style="margin: 0 0 5px">
                                 <a
@@ -431,7 +429,7 @@ export const mailTemplate = (
                                 margin: 0 0 15px;
                               "
                             >
-                              Verify your email
+                              Verifikasi email Anda
                             </p>
                             <p
                               style="
@@ -441,9 +439,7 @@ export const mailTemplate = (
                                 margin: 0 0 20px;
                               "
                             >
-                              Thank you for signing up! Please verify your email
-                              address to complete the registration by clicking
-                              the button below
+                              Terima kasih telah mendaftar! Harap verifikasi alamat email Anda untuk menyelesaikan pendaftaran dengan mengklik tombol di bawah ini
                             </p>
                             <table border="0" cellpadding="0" cellspacing="0">
                               <tr>
@@ -465,7 +461,7 @@ export const mailTemplate = (
                                       display: inline-block;
                                     "
                                   >
-                                    Verify Email Address
+                                    Verifikasi alamat email
                                   </a>
                                 </td>
                               </tr>
@@ -475,9 +471,7 @@ export const mailTemplate = (
                         <tr>
                           <td>
                             <p>
-                              If the button above doesn't work, you can also
-                              verify your email by copying and pasting the
-                              following link into your browser:
+                              Jika tombol di atas tidak berfungsi, Anda juga dapat mengatur ulang kata sandi dengan menyalin dan menempelkan tautan berikut ke browser Anda:
                             </p>
                             <p>${url}</p>
                           </td>
@@ -585,8 +579,7 @@ export const mailTemplate = (
                   <tr>
                     <td align="center" style="color: #aaaaaa; font-size: 12px">
                       <p style="margin: 0 0 5px">
-                        You received this email because you signed up to our
-                        website.
+                        Anda mendapatkan email ini karena Anda mendaftar di aplikasi kami
                       </p>
                       <p style="margin: 0 0 5px">
                         <a
