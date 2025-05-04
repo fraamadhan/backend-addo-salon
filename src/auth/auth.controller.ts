@@ -175,7 +175,6 @@ export class AuthController {
         'Internal Server Error',
       );
     }
-    // return this.authService.findOne(+id);
   }
 
   // @Delete('logout')
