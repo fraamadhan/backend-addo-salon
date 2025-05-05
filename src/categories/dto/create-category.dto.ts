@@ -1,4 +1,11 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import {
+  IsMongoId,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
+import { Types } from 'mongoose';
 
 export class CreateCategoryDto {
   @IsString()
@@ -12,7 +19,7 @@ export class CreateCategoryDto {
   @IsNumber()
   code!: number;
 
-  @IsString()
+  @IsMongoId()
   @IsOptional()
-  parentId?: string;
+  parentId?: Types.ObjectId;
 }

@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   HttpStatus,
+  Query,
 } from '@nestjs/common';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -42,9 +43,9 @@ export class CategoriesController {
   }
 
   @Get()
-  async getCategories() {
+  async getCategories(@Query('keyword') keyword: string) {
     try {
-      const data = await this.categoriesService.findAll();
+      const data = await this.categoriesService.findAll(keyword);
 
       this.logger.log('[CATEGORIES CONTROLLER] - getCategories ');
       return responseSuccess(
