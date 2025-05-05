@@ -36,10 +36,10 @@ export class AppController {
     return this.appService.create(body);
   }
 
-  @Get(':id')
-  async findOne(@Param('id') id: string): Promise<User | null> {
-    return this.appService.findOne(id);
-  }
+  // @Get(':id')
+  // async findOne(@Param('id') id: string): Promise<User | null> {
+  //   return this.appService.findOne(id);
+  // }
 
   @Patch(':id')
   async update(
