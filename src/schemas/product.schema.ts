@@ -1,5 +1,6 @@
 import { Schema, SchemaFactory, Prop } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
+import * as mongoosePaginate from 'mongoose-paginate-v2';
 
 export type ProductDocument = HydratedDocument<Product>;
 
@@ -14,11 +15,12 @@ export class Product {
   @Prop({ required: true, maxlength: 1500 })
   description!: string;
 
-  @Prop({ type: Types.ObjectId, default: null, index: true, ref: 'Category' })
-  categoryId!: Types.ObjectId;
+  @Prop({ type: [Types.ObjectId], default: null, index: true, ref: 'Category' })
+  categoryIds!: Types.ObjectId[];
 
   @Prop({ default: 0 })
   price!: number;
 }
 
 export const ProductSchema = SchemaFactory.createForClass(Product);
+ProductSchema.plugin(mongoosePaginate);

@@ -9,6 +9,9 @@ import { AuthModule } from './auth/auth.module';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { BullModule } from '@nestjs/bull';
 import { CategoriesModule } from './categories/categories.module';
+import { SupabaseService } from './supabase/supabase.service';
+import { UserAssets, UserAssetsSchema } from './schemas/user-assets.schema';
+import { ProductsModule } from './products/products.module';
 
 @Module({
   imports: [
@@ -31,6 +34,10 @@ import { CategoriesModule } from './categories/categories.module';
         name: User.name,
         schema: UserSchema,
       },
+      {
+        name: UserAssets.name,
+        schema: UserAssetsSchema,
+      },
     ]),
     MailerModule.forRootAsync({
       useFactory: () => ({
@@ -48,8 +55,9 @@ import { CategoriesModule } from './categories/categories.module';
     UsersModule,
     AuthModule,
     CategoriesModule,
+    ProductsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, SupabaseService],
 })
 export class AppModule {}

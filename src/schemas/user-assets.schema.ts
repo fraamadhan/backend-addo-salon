@@ -13,6 +13,11 @@ export class UserAssets {
   })
   path!: string;
 
+  @Prop({
+    default: null,
+  })
+  publicUrl!: string;
+
   @Prop({ type: Types.ObjectId, default: null, index: true, ref: 'User' })
   userId!: Types.ObjectId;
 }
