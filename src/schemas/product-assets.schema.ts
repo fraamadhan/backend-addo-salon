@@ -11,6 +11,11 @@ export class ProductAssets {
   @Prop({ default: null })
   path!: string;
 
+  @Prop({
+    default: null,
+  })
+  publicUrl!: string;
+
   @Prop({ type: Types.ObjectId, default: null, index: true, ref: 'Product' })
   productId!: Types.ObjectId;
 }
