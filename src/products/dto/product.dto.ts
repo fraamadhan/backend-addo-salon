@@ -1,14 +1,15 @@
+import { PartialType } from '@nestjs/mapped-types';
 import { Type } from 'class-transformer';
 import {
-  IsArray,
-  IsMongoId,
+  IsEnum,
   IsNotEmpty,
   IsNumber,
+  IsOptional,
   IsString,
   MaxLength,
   Min,
 } from 'class-validator';
-import { Types } from 'mongoose';
+import { StyleType } from 'src/types/enum';
 
 export class ProductDto {
   @IsString()
@@ -27,15 +28,40 @@ export class ProductDto {
   @IsNotEmpty()
   estimation!: number;
 
-  @IsArray()
-  @Type(() => Array)
+  @IsString()
+  @Type(() => String)
   @IsNotEmpty()
-  @IsMongoId({ each: true })
-  categoryIds!: Types.ObjectId[];
+  categoryIds!: string;
 
   @IsNumber()
   @Type(() => Number)
   @IsNotEmpty()
   @Min(0)
   price!: number;
+
+  @IsString()
+  @Type(() => String)
+  @IsNotEmpty()
+  @IsEnum(StyleType)
+  type!: StyleType;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  ratingCount?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  ratingAverage?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  orderedCount?: number;
+
+  @IsOptional()
+  file!: any;
 }
+
+export class UpdateProductDto extends PartialType(ProductDto) {}

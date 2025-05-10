@@ -9,6 +9,7 @@ import {
   ProductAssets,
   ProductAssetsSchema,
 } from 'src/schemas/product-assets.schema';
+import { Category, CategorySchema } from 'src/schemas/category.schema';
 
 @Module({
   imports: [
@@ -20,6 +21,10 @@ import {
       {
         name: ProductAssets.name,
         schema: ProductAssetsSchema,
+      },
+      {
+        name: Category.name,
+        schema: CategorySchema,
       },
     ]),
   ],
