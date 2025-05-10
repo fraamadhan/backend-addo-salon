@@ -38,9 +38,11 @@ export class AuthService {
 
   async create(body: RegisterDTO) {
     //check if user already exists
-    const existingUser = await this.userModel.findOne({
-      email: body.email,
-    });
+    const existingUser = await this.userModel
+      .findOne({
+        email: body.email,
+      })
+      .exec();
 
     if (existingUser) {
       throw new HttpException('Email sudah digunakan', HttpStatus.BAD_REQUEST);
@@ -125,9 +127,11 @@ export class AuthService {
       );
     }
 
-    const existingUser = await this.userModel.findOne({
-      email: existingToken.email,
-    });
+    const existingUser = await this.userModel
+      .findOne({
+        email: existingToken.email,
+      })
+      .exec();
 
     if (!existingUser) {
       throw new HttpException(
@@ -152,7 +156,7 @@ export class AuthService {
   }
 
   async forgotPassword(email: string) {
-    const existingUser = await this.userModel.findOne({ email });
+    const existingUser = await this.userModel.findOne({ email }).exec();
     if (!existingUser) {
       throw new HttpException(
         'Pengguna tidak ditemukan',
@@ -250,9 +254,11 @@ export class AuthService {
 
       switch (type) {
         case EmailVerificationType.REGISTER: {
-          const existingToken = await this.emailVerifModel.findOne({
-            email,
-          });
+          const existingToken = await this.emailVerifModel
+            .findOne({
+              email,
+            })
+            .exec();
 
           if (existingToken) {
             existingToken.token = token;
@@ -266,9 +272,11 @@ export class AuthService {
           break;
         }
         case EmailVerificationType.FORGOT_PASSWORD: {
-          const existingToken = await this.passwordResetModel.findOne({
-            email,
-          });
+          const existingToken = await this.passwordResetModel
+            .findOne({
+              email,
+            })
+            .exec();
 
           if (existingToken) {
             existingToken.token = token;
@@ -305,9 +313,11 @@ export class AuthService {
     let token: string;
     switch (type) {
       case EmailVerificationType.REGISTER: {
-        const data = await this.emailVerifModel.findOne({
-          email,
-        });
+        const data = await this.emailVerifModel
+          .findOne({
+            email,
+          })
+          .exec();
         if (!data) {
           throw new HttpException(
             'Token tidak ditemukan',
@@ -318,9 +328,11 @@ export class AuthService {
         break;
       }
       case EmailVerificationType.FORGOT_PASSWORD: {
-        const data = await this.passwordResetModel.findOne({
-          email,
-        });
+        const data = await this.passwordResetModel
+          .findOne({
+            email,
+          })
+          .exec();
         if (!data) {
           throw new HttpException(
             'Token tidak ditemukan',
@@ -349,9 +361,11 @@ export class AuthService {
   ) {
     switch (type) {
       case EmailVerificationType.REGISTER: {
-        const data = await this.emailVerifModel.findOne({
-          token,
-        });
+        const data = await this.emailVerifModel
+          .findOne({
+            token,
+          })
+          .exec();
         if (!data) {
           throw new HttpException(
             'Token tidak ditemukan',
@@ -361,9 +375,11 @@ export class AuthService {
         return data;
       }
       case EmailVerificationType.FORGOT_PASSWORD: {
-        const data = await this.passwordResetModel.findOne({
-          token,
-        });
+        const data = await this.passwordResetModel
+          .findOne({
+            token,
+          })
+          .exec();
         if (!data) {
           throw new HttpException(
             'Token tidak ditemukan',

@@ -3,15 +3,18 @@ import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Category, CategoryDocument } from 'src/schemas/category.schema';
-import mongoose, { Model } from 'mongoose';
+import mongoose, { Model, Types } from 'mongoose';
 import Logger from 'src/logger';
 
 interface CategoryWithParent {
+  _id: Types.ObjectId;
   name: string;
   slug: string;
   code: number;
   parentId?: string;
   parentName?: string;
+  parentSlug?: string;
+  parentCode?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,6 +29,10 @@ export class CategoriesService {
 
   async create(body: CreateCategoryDto) {
     try {
+      const { parentId } = body;
+      if (parentId) {
+        body.parentId = new mongoose.Types.ObjectId(parentId);
+      }
       const data = await this.categoryModel.create(body);
 
       return data;
@@ -60,6 +67,7 @@ export class CategoriesService {
         },
         {
           $project: {
+            _id: 1,
             name: 1,
             slug: 1,
             code: 1,
@@ -73,7 +81,36 @@ export class CategoriesService {
         },
       ]);
 
-      return data;
+      const parentMap = new Map<string, { parent: any; children: any[] }>();
+      for (const item of data) {
+        if (!item.parentId) {
+          const parentKey = item._id.toString();
+          parentMap.set(parentKey, {
+            parent: {
+              _id: item._id,
+              name: item.name,
+              slug: item.slug,
+              code: item.code,
+            },
+            children: [],
+          });
+        }
+      }
+      for (const item of data) {
+        if (item.parentId) {
+          const parentKey = item.parentId.toString();
+          if (parentMap.has(parentKey)) {
+            const parentEntry = parentMap.get(parentKey);
+            if (parentEntry) {
+              parentEntry.children.push(item);
+            }
+          }
+        }
+      }
+
+      const categories = Array.from(parentMap.values());
+
+      return categories;
     } catch (error: any) {
       this.logger.error(`[CategoriesService] - findAll ${error}`);
       throw new HttpException(
@@ -108,12 +145,14 @@ export class CategoriesService {
       : undefined;
 
     try {
-      const data = await this.categoryModel.findOneAndUpdate(
-        {
-          _id: id,
-        },
-        body,
-      );
+      const data = await this.categoryModel
+        .findOneAndUpdate(
+          {
+            _id: id,
+          },
+          body,
+        )
+        .exec();
 
       return data;
     } catch (error: any) {
@@ -127,9 +166,11 @@ export class CategoriesService {
 
   async remove(id: string) {
     try {
-      const data = await this.categoryModel.findOneAndDelete({
-        _id: id,
-      });
+      const data = await this.categoryModel
+        .findOneAndDelete({
+          _id: id,
+        })
+        .exec();
 
       console.log(data);
 

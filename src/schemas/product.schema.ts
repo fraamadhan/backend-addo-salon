@@ -1,6 +1,7 @@
 import { Schema, SchemaFactory, Prop } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import * as mongoosePaginate from 'mongoose-paginate-v2';
+import { StyleType } from 'src/types/enum';
 
 export type ProductDocument = HydratedDocument<Product>;
 
@@ -20,6 +21,15 @@ export class Product {
 
   @Prop({ default: 0 })
   price!: number;
+
+  @Prop({ default: 0 })
+  ratingCount!: number;
+
+  @Prop({ default: 0 })
+  ratingAverage!: number;
+
+  @Prop({ enum: StyleType, required: true })
+  type!: StyleType;
 }
 
 export const ProductSchema = SchemaFactory.createForClass(Product);

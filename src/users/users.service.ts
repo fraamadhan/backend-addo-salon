@@ -127,9 +127,11 @@ export class UsersService {
       }
 
       if (body.email) {
-        const existingUser = await this.userModel.findOne({
-          email: body.email,
-        });
+        const existingUser = await this.userModel
+          .findOne({
+            email: body.email,
+          })
+          .exec();
 
         if (existingUser) {
           throw new HttpException(
@@ -192,7 +194,8 @@ export class UsersService {
           .findOneAndDelete({
             userId: new mongoose.Types.ObjectId(id),
           })
-          .select('path');
+          .select('path')
+          .exec();
 
         if (oldAsset) {
           await this.supabaseService.deleteImage(oldAsset?.path);
@@ -208,7 +211,7 @@ export class UsersService {
 
       const after = Date.now();
       const duration = after - before;
-      console.log(`Operation took ${duration / 1000} seconds`);
+      console.log(`Operation update user took ${duration / 1000} seconds`);
 
       return user;
     } catch (error: any) {
@@ -230,9 +233,11 @@ export class UsersService {
       .lean()
       .exec();
 
-    const assetUser = await this.userAssetModel.findOneAndDelete({
-      userId: new mongoose.Types.ObjectId(id),
-    });
+    const assetUser = await this.userAssetModel
+      .findOneAndDelete({
+        userId: new mongoose.Types.ObjectId(id),
+      })
+      .exec();
 
     if (assetUser) await this.supabaseService.deleteImage(assetUser?.path);
 

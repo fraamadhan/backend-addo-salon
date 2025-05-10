@@ -7,3 +7,9 @@ export enum ReservationStatus {
   CANCELED = 'CANCELED',
   CART = 'CART',
 }
+
+export enum StyleType {
+  MALE = 'male',
+  FEMALE = 'female',
+  UNISEX = 'unisex',
+}
