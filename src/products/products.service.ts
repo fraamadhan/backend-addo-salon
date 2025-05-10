@@ -200,13 +200,20 @@ export class ProductsService {
       throw new HttpException('Missing product id', HttpStatus.BAD_REQUEST);
     }
 
-    const data = await this.productModel.findById(id).lean().exec();
+    const data = await this.productModel
+      .findById(id)
+      .lean()
+      .populate('categoryIds')
+      .exec();
 
     if (!data) {
       throw new HttpException('Product not found', HttpStatus.NOT_FOUND);
     }
 
-    return data;
+    const { categoryIds, ...product } = data;
+    const result = { ...product, category: categoryIds || [] };
+
+    return result;
   }
 
   async update(id: string, body: UpdateProductDto, file?: Express.Multer.File) {
