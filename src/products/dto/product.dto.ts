@@ -56,6 +56,11 @@ export class ProductDto {
   ratingAverage?: number;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  orderedCount?: number;
+
+  @IsOptional()
   file!: any;
 }
 

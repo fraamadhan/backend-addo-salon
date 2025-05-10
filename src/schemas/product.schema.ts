@@ -30,6 +30,9 @@ export class Product {
 
   @Prop({ enum: StyleType, required: true })
   type!: StyleType;
+
+  @Prop({ default: 0 })
+  orderedCount?: number;
 }
 
 export const ProductSchema = SchemaFactory.createForClass(Product);

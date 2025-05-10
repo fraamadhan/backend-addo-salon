@@ -247,6 +247,7 @@ export class ProductsService {
           type: body.type,
           ratingCount: body.ratingCount,
           ratingAverage: body.ratingAverage,
+          orderedCount: body.orderedCount,
         },
         {
           new: true,
