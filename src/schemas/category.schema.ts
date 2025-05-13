@@ -8,7 +8,7 @@ export class Category {
   @Prop({ default: null, index: true, maxlength: 50 })
   name!: string;
 
-  @Prop({ default: null, unique: true, maxlength: 50 })
+  @Prop({ default: null, index: true, unique: true, maxlength: 50 })
   slug!: string;
 
   @Prop({ default: null, type: Types.ObjectId, ref: 'Category', index: true })

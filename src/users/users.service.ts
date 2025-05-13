@@ -102,14 +102,23 @@ export class UsersService {
   }
 
   async findOne(id: string) {
-    const user = await this.userModel.findById(id).select('-password').exec();
+    const user = await this.userModel
+      .findById(id)
+      .select('-password')
+      .lean()
+      .exec();
+    const asset = await this.userAssetModel.findOne({
+      userId: new mongoose.Types.ObjectId(id),
+    });
     if (!user) {
       throw new HttpException(
         `User with id ${id} not found`,
         HttpStatus.NOT_FOUND,
       );
     }
-    return user;
+    const data = { ...user, asset };
+
+    return data;
   }
 
   async update(id: string, body: UserUpdateDto, file?: Express.Multer.File) {

@@ -8,12 +8,17 @@ import {
   Delete,
   HttpStatus,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { responseError, responseSuccess } from 'src/utils/response';
 import Logger from 'src/logger';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { RolesGuard } from 'src/auth/roles.guard';
+import { RoleType } from 'src/types/role';
+import { Roles } from 'src/utils/custom-decorator/roles.decorator';
 
 @Controller('categories')
 export class CategoriesController {
@@ -21,6 +26,8 @@ export class CategoriesController {
 
   private readonly logger = new Logger();
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN)
   async create(@Body() body: CreateCategoryDto) {
     try {
       const data = await this.categoriesService.create(body);
@@ -91,6 +98,8 @@ export class CategoriesController {
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN)
   async updateCategory(
     @Param('id') id: string,
     @Body() body: UpdateCategoryDto,
@@ -119,6 +128,8 @@ export class CategoriesController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN)
   async deleteCategory(@Param('id') id: string) {
     try {
       const data = await this.categoriesService.remove(id);

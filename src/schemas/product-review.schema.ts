@@ -1,5 +1,6 @@
 import { Schema, SchemaFactory, Prop } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
+import * as mongoosePaginate from 'mongoose-paginate-v2';
 
 export type ProductReviewDocument = HydratedDocument<ProductReview>;
 
@@ -19,3 +20,4 @@ export class ProductReview {
 }
 
 export const ProductReviewSchema = SchemaFactory.createForClass(ProductReview);
+ProductReviewSchema.plugin(mongoosePaginate);

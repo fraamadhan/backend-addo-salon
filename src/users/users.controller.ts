@@ -30,6 +30,8 @@ export class UsersController {
   private readonly logger = new Logger();
 
   @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN)
   async findAll(@Query() params: ParamsSearchUserDto) {
     try {
       const data = await this.usersService.findAll(params);
@@ -48,6 +50,8 @@ export class UsersController {
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN, RoleType.USER)
   async findOne(@Param('id') id: string) {
     try {
       const data = await this.usersService.findOne(id);
