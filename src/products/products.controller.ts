@@ -11,6 +11,7 @@ import {
   ParseFilePipeBuilder,
   HttpStatus,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { ProductDto, UpdateProductDto } from './dto/product.dto';
@@ -18,6 +19,10 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import Logger from 'src/logger';
 import { responseError, responseSuccess } from 'src/utils/response';
 import { ParamsSearchProductDto } from './dto/search.dto';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { RolesGuard } from 'src/auth/roles.guard';
+import { RoleType } from 'src/types/role';
+import { Roles } from 'src/utils/custom-decorator/roles.decorator';
 
 @Controller('products')
 export class ProductsController {
@@ -27,6 +32,8 @@ export class ProductsController {
 
   @Post()
   @UseInterceptors(FileInterceptor('file'))
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN)
   async create(
     @Body() body: ProductDto,
     @UploadedFile(
@@ -110,6 +117,8 @@ export class ProductsController {
 
   @Patch(':id')
   @UseInterceptors(FileInterceptor('file'))
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN)
   async update(
     @Param('id') id: string,
     @Body() body: UpdateProductDto,
@@ -149,6 +158,8 @@ export class ProductsController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN)
   async remove(@Param('id') id: string) {
     try {
       const data = await this.productsService.remove(id);

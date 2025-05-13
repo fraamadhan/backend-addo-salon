@@ -18,8 +18,19 @@ export class TransactionItems {
   @Prop({ default: null, index: true, type: Types.ObjectId, ref: 'Product' })
   productId!: Types.ObjectId;
 
+  @Prop({
+    required: true,
+    type: Types.ObjectId,
+    ref: 'Transaction',
+    index: true,
+  })
+  transactionId!: Types.ObjectId;
+
   @Prop({ default: ReservationStatus.CART })
   serviceStatus!: ReservationStatus;
+
+  @Prop({ default: false })
+  isReviewed!: boolean;
 }
 
 export const TransactionItemsSchema =
