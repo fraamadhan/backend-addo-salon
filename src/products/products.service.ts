@@ -112,6 +112,12 @@ export class ProductsService {
       });
     }
 
+    if (params.type) {
+      query.$and.push({
+        type: params.type,
+      });
+    }
+
     if (params.highestPrice) {
       query.$and.push({
         price: {
