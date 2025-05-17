@@ -15,6 +15,7 @@ import { SortType } from 'src/types/sorttype';
 import { sanitizeKeyword } from 'src/utils/sanitize-keyword';
 import { Category, CategoryDocument } from 'src/schemas/category.schema';
 import { ProductQuery } from 'src/types/general';
+import { toObjectId } from 'src/utils/general';
 @Injectable()
 export class ProductsService {
   constructor(
@@ -210,8 +211,20 @@ export class ProductsService {
       throw new HttpException('Product not found', HttpStatus.NOT_FOUND);
     }
 
+    const asset = await this.productAssetModel
+      .findOne({
+        productId: toObjectId(id),
+      })
+      .select('publicUrl path')
+      .lean()
+      .exec();
+
     const { categoryIds, ...product } = data;
-    const result = { ...product, category: categoryIds || [] };
+    const result = {
+      ...product,
+      category: categoryIds || [],
+      assetRef: asset?.publicUrl,
+    };
 
     return result;
   }
