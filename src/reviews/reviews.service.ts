@@ -14,6 +14,7 @@ import {
   TransactionItemsDocument,
   TransactionItems,
 } from 'src/schemas/transaction-items.schema';
+import { toObjectId } from 'src/utils/general';
 
 @Injectable()
 export class ReviewsService {
@@ -96,9 +97,32 @@ export class ReviewsService {
   }
 
   async findAll(params: ParamsReviewDto) {
-    const page = params.page ?? 1;
-    const limit = params.limit ?? 10;
+    if (params.userId && params.productId)
+      return this.findAllByProductId(params);
+    if (params.rating) return this.findByRating(params);
+  }
 
+  async findOne(id: string) {
+    if (!id) {
+      throw new HttpException('Ulasan tidak ditemukan', HttpStatus.NOT_FOUND);
+    }
+    const result = await this.productReviewModel
+      .findById(id)
+      .populate('productId', '_id name ratingAverage')
+      .populate('userId', '_id name')
+      .lean()
+      .exec();
+
+    if (!result) {
+      throw new HttpException('Ulasan tidak ditemukan', HttpStatus.NOT_FOUND);
+    }
+
+    const { productId: product, userId: user, ...review } = result;
+
+    return { ...review, product, user };
+  }
+
+  async findByRating(params: ParamsReviewDto) {
     if (params.rating) {
       const data = await this.productReviewModel
         .find({
@@ -140,28 +164,16 @@ export class ReviewsService {
 
       return result;
     }
-    if (params.userId) {
-      const query = {
-        userId: {
-          $ne: params?.userId,
-        },
-      };
-      const firstRow = await this.productReviewModel
-        .find({
-          userId: params?.userId,
-        })
-        .populate('productId', '_id name ratingAverage')
-        .populate('userId', '_id name')
-        .lean()
-        .exec();
+  }
 
-      const userReview = firstRow.map(
-        ({ productId: product, userId: user, ...review }) => ({
-          ...review,
-          product,
-          user,
-        }),
-      );
+  async findAllByProductId(params: ParamsReviewDto) {
+    const page = params.page ?? 1;
+    const limit = params.limit ?? 10;
+
+    if (params.productId) {
+      const query = {
+        productId: toObjectId(params.productId),
+      };
 
       const result = await this.productReviewModel.paginate(query, {
         page,
@@ -201,6 +213,34 @@ export class ReviewsService {
         }),
       );
 
+      const ratingCounts: { _id: number; count: number }[] =
+        await this.productReviewModel.aggregate([
+          {
+            $match: { productId: toObjectId(params.productId) },
+          },
+          { $group: { _id: '$rating', count: { $sum: 1 } } },
+        ]);
+
+      const arrayStarCount = [5, 4, 3, 2, 1]
+        .map((star) => ({
+          star,
+          count:
+            ratingCounts.find((r) => r._id === star)?.count || (0 as number),
+        }))
+        .reverse();
+
+      const totalReviews = arrayStarCount.reduce(
+        (accum, item) => accum + item.count,
+        0,
+      );
+
+      const totalRating = ratingCounts.reduce(
+        (accum, item) => accum + item._id * item.count,
+        0,
+      );
+
+      const ratingAverage = totalReviews > 0 ? totalRating / totalReviews : 0;
+
       const totalItem = result.totalDocs;
       const pageCount = result.totalPages;
       const hasPrevPage = result.hasPrevPage;
@@ -219,38 +259,15 @@ export class ReviewsService {
         nextPage,
       };
 
-      const reviews = [...userReview, ...mappedPaginate];
+      const reviews = [...mappedPaginate];
 
-      return { reviews, paginator };
+      return {
+        reviews,
+        paginator,
+        arrayStarCount,
+        totalReviews,
+        ratingAverage,
+      };
     }
   }
-
-  async findOne(id: string) {
-    if (!id) {
-      throw new HttpException('Ulasan tidak ditemukan', HttpStatus.NOT_FOUND);
-    }
-    const result = await this.productReviewModel
-      .findById(id)
-      .populate('productId', '_id name ratingAverage')
-      .populate('userId', '_id name')
-      .lean()
-      .exec();
-
-    if (!result) {
-      throw new HttpException('Ulasan tidak ditemukan', HttpStatus.NOT_FOUND);
-    }
-
-    const { productId: product, userId: user, ...review } = result;
-
-    return { ...review, product, user };
-  }
-
-  //update and delete review is not needed right now
-  // update(id: number, body: UpdateReviewDto) {
-  //   return `This action updates a #${id} review`;
-  // }
-
-  // remove(id: number) {
-  //   return `This action removes a #${id} review`;
-  // }
 }

@@ -46,8 +46,19 @@ export class CategoriesService {
   }
 
   async findAll(keyword: string) {
+    let query = {};
+
+    if (keyword) {
+      query = {
+        $or: [
+          { name: { $regex: keyword, $options: 'i' } },
+          { code: { $regex: keyword, $options: 'i' } },
+        ],
+      };
+    }
+
     try {
-      const data = await this.categoryModel.aggregate<CategoryWithParent>([
+      const pipeline: any[] = [
         {
           $lookup: {
             from: 'categories',
@@ -57,29 +68,29 @@ export class CategoriesService {
           },
         },
         { $unwind: { path: '$parent', preserveNullAndEmptyArrays: true } },
-        {
-          $match: {
-            $or: [
-              { name: { $regex: keyword, $options: 'i' } },
-              { 'parent.name': { $regex: keyword, $options: 'i' } },
-            ],
-          },
+      ];
+
+      if (keyword) {
+        pipeline.push({ $match: query });
+      }
+
+      pipeline.push({
+        $project: {
+          _id: 1,
+          name: 1,
+          slug: 1,
+          code: 1,
+          parentId: '$parent._id',
+          parentName: '$parent.name',
+          parentSlug: '$parent.slug',
+          parentCode: '$parent.code',
+          createdAt: 1,
+          updatedAt: 1,
         },
-        {
-          $project: {
-            _id: 1,
-            name: 1,
-            slug: 1,
-            code: 1,
-            parentId: '$parent._id',
-            parentName: '$parent.name',
-            parentSlug: '$parent.slug',
-            parentCode: '$parent.code',
-            createdAt: 1,
-            updatedAt: 1,
-          },
-        },
-      ]);
+      });
+
+      const data =
+        await this.categoryModel.aggregate<CategoryWithParent>(pipeline);
 
       const parentMap = new Map<string, { parent: any; children: any[] }>();
       for (const item of data) {
