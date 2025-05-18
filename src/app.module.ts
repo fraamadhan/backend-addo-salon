@@ -13,6 +13,7 @@ import { SupabaseService } from './supabase/supabase.service';
 import { UserAssets, UserAssetsSchema } from './schemas/user-assets.schema';
 import { ProductsModule } from './products/products.module';
 import { ReviewsModule } from './reviews/reviews.module';
+import { CartModule } from './cart/cart.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { ReviewsModule } from './reviews/reviews.module';
     CategoriesModule,
     ProductsModule,
     ReviewsModule,
+    CartModule,
   ],
   controllers: [AppController],
   providers: [AppService, SupabaseService],

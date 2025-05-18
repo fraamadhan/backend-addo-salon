@@ -97,8 +97,7 @@ export class ReviewsService {
   }
 
   async findAll(params: ParamsReviewDto) {
-    if (params.userId && params.productId)
-      return this.findAllByProductId(params);
+    if (params.productId) return this.findAllByProductId(params);
     if (params.rating) return this.findByRating(params);
   }
 
