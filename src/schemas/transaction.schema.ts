@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
-import { ReservationStatus } from 'src/types/enum';
+import { PaymentMethod, ReservationStatus } from 'src/types/enum';
 
 export type TransactionDocument = HydratedDocument<Transaction>;
 
@@ -12,14 +12,14 @@ export class Transaction {
   @Prop({ default: 0 })
   total_price!: number;
 
-  @Prop({ default: null, maxlength: 1500 })
-  note?: string;
-
   @Prop({ default: ReservationStatus.CART })
   status!: ReservationStatus;
 
   @Prop({ default: null })
-  paymentType?: string;
+  orderCode?: string;
+
+  @Prop({ enum: PaymentMethod, default: null })
+  paymentMethod?: PaymentMethod;
 
   @Prop({ default: null })
   bank?: string;

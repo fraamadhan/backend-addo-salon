@@ -14,6 +14,8 @@ import { UserAssets, UserAssetsSchema } from './schemas/user-assets.schema';
 import { ProductsModule } from './products/products.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { CartModule } from './cart/cart.module';
+import { TransactionModule } from './transaction/transaction.module';
+import { MidtransModule } from './transaction/midtrans/midtrans.module';
 
 @Module({
   imports: [
@@ -60,6 +62,8 @@ import { CartModule } from './cart/cart.module';
     ProductsModule,
     ReviewsModule,
     CartModule,
+    TransactionModule,
+    MidtransModule,
   ],
   controllers: [AppController],
   providers: [AppService, SupabaseService],

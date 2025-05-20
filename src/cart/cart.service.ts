@@ -4,18 +4,27 @@ import {
   Injectable,
   InternalServerErrorException,
 } from '@nestjs/common';
-import { CreateCartDto } from './dto/create-cart.dto';
+import {
+  CreateCartDto,
+  UpdateCartDto,
+  UpdateCheckoutCartDto,
+} from './dto/create-cart.dto';
 import Logger from 'src/logger';
-import { InjectModel } from '@nestjs/mongoose';
+import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Cart, CartDocument } from 'src/schemas/cart.schema';
-import { Model, Types } from 'mongoose';
+import mongoose, { Model, Types } from 'mongoose';
 import { Product, ProductDocument } from 'src/schemas/product.schema';
 import {
   ProductAssets,
   ProductAssetsDocument,
 } from 'src/schemas/product-assets.schema';
 import { toObjectId } from 'src/utils/general';
-import { UserAssets } from 'src/schemas/user-assets.schema';
+import {
+  Transaction,
+  TransactionDocument,
+} from 'src/schemas/transaction.schema';
+import { ReservationStatus } from 'src/types/enum';
+import { TransactionItems } from 'src/schemas/transaction-items.schema';
 
 @Injectable()
 export class CartService {
@@ -25,6 +34,11 @@ export class CartService {
     private readonly productModel: Model<ProductDocument>,
     @InjectModel(ProductAssets.name)
     private readonly productAssetModel: Model<ProductAssetsDocument>,
+    @InjectModel(Transaction.name)
+    private readonly transactionModel: Model<TransactionDocument>,
+    @InjectModel(TransactionItems.name)
+    private readonly transactionItemModel: Model<TransactionDocument>,
+    @InjectConnection() private readonly connection: mongoose.Connection,
   ) {}
 
   private readonly logger = new Logger();
@@ -109,7 +123,7 @@ export class CartService {
 
       const data = result.map((value) => ({
         ...value,
-        assetRef: assetMap.get(value.productId.toString()),
+        assetRef: assetMap.get(value.productId.toString()) || null,
       }));
 
       return data;
@@ -119,13 +133,40 @@ export class CartService {
     }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} cart`;
+  async findOne(id: string, userId: string) {
+    if (!id) {
+      throw new HttpException('Missing cart id', HttpStatus.BAD_REQUEST);
+    }
+    const userObjectId = toObjectId(userId);
+
+    const data = await this.cartModel
+      .findOne({ _id: id, userId: userObjectId })
+      .lean()
+      .exec();
+
+    if (!data) {
+      throw new HttpException('Item not found in cart', HttpStatus.NOT_FOUND);
+    }
+    const assetRef = await this.productAssetModel
+      .findOne({
+        productId: id,
+      })
+      .select('path publicUrl')
+      .lean()
+      .exec();
+
+    return { ...data, assetRef };
   }
 
-  // update(id: number, updateCartDto: UpdateCartDto) {
-  //   return `This action updates a #${id} cart`;
-  // }
+  async update(id: string, body: UpdateCartDto) {
+    const data = await this.cartModel.findOneAndUpdate({ _id: id }, body);
+
+    if (!data) {
+      throw new HttpException('Item in cart not found', HttpStatus.BAD_REQUEST);
+    }
+
+    return data;
+  }
 
   async remove(id: string) {
     const result = await this.cartModel
@@ -135,11 +176,88 @@ export class CartService {
       .lean()
       .exec();
 
+    if (!result) {
+      throw new HttpException('Item in cart not found', HttpStatus.NOT_FOUND);
+    }
+
     return result;
   }
 
-  // general function
+  async checkout(body: UpdateCheckoutCartDto, userId: string) {
+    const items = body.items;
+    const userObjectId = toObjectId(userId);
+    if (!userObjectId) {
+      throw new HttpException('Missing user id', HttpStatus.BAD_REQUEST);
+    }
 
+    const session = await this.connection.startSession();
+    session.startTransaction();
+    try {
+      const updatedItems = await Promise.all(
+        items.map(async (item) => {
+          if (!item.productId || !item.cartId || !item.reservationDate) {
+            throw new HttpException(
+              'Missing cart id or product id or reservation date',
+              HttpStatus.BAD_REQUEST,
+            );
+          }
+          const cartObjectId = toObjectId(item.cartId);
+          const productObjectId = toObjectId(item.productId);
+
+          if (!productObjectId) {
+            throw new HttpException(
+              'Failed to convert product id to object id',
+              HttpStatus.BAD_REQUEST,
+            );
+          }
+
+          await this.checkIsNearToCloseTimeOrConflict(
+            productObjectId,
+            userObjectId,
+            item.reservationDate,
+            'Terdapat item yang bentrok dengan pesanan pengguna lain. Silakan cek kembali jadwal pesanan dan ubah jadwal pesanan',
+          );
+
+          const updateCart = await this.cartModel
+            .findOneAndUpdate(
+              {
+                _id: cartObjectId,
+                productId: productObjectId,
+                userId: userObjectId,
+              },
+              { $set: { isCheckoutLocked: true } },
+              { new: true, session: session },
+            )
+            .select('_id productId userId reservationDate')
+            .lean()
+            .exec();
+
+          if (updateCart) {
+            return {
+              cartId: updateCart._id,
+              productId: updateCart.productId,
+              reservationDate: updateCart.reservationDate,
+            };
+          }
+
+          return null;
+        }),
+      );
+
+      await session.commitTransaction();
+      const data = updatedItems.filter(Boolean);
+
+      return data;
+    } catch (error: any) {
+      this.logger.errorString(`[CartService - checkout] ${error as string}`);
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  // general function
   checkIsInvalidDay(reservationDate: Date) {
     const now = new Date(Date.now());
     reservationDate = new Date(reservationDate);
@@ -147,7 +265,7 @@ export class CartService {
     if (reservationDate < now) {
       throw new HttpException(
         'Tidak bisa memesan tanggal yang sudah lewat',
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.UNPROCESSABLE_ENTITY,
       );
     }
   }
@@ -156,6 +274,7 @@ export class CartService {
     productId: Types.ObjectId,
     userId: Types.ObjectId,
     reservationDate: Date,
+    message: string = '',
   ) {
     const product = await this.productModel
       .findOne({
@@ -166,8 +285,8 @@ export class CartService {
       .exec();
 
     if (product && typeof product.estimation === 'number') {
-      // const allowedOverlap = Number(process.env.ONE_HOUR);
-      const durationMs = product.estimation * Number(process.env.ONE_HOUR); //customer can overlap 30 minute before the previous order done
+      const allowedOverlap = Number(process.env.ONE_HOUR);
+      const durationMs = product.estimation * Number(process.env.ONE_HOUR); //customer can overlap one hour before the previous order done
 
       const startTime = new Date(reservationDate);
       const endTime = new Date(startTime.getTime() + durationMs);
@@ -180,46 +299,58 @@ export class CartService {
       if (startTime.getDay() === 1) {
         throw new HttpException(
           'Hari senin salon libur. Silakan pilih jadwal lain!',
-          HttpStatus.BAD_REQUEST,
+          HttpStatus.UNPROCESSABLE_ENTITY,
         );
       }
 
-      if (endTime > closingTime) {
+      if (endTime > closingTime || startTime < openingTime) {
         throw new HttpException(
-          'Jadwal pesanan melebihi jam tutup salon',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-      if (startTime < openingTime) {
-        throw new HttpException(
-          'Salon belum dibuka. Pilih jam lain',
-          HttpStatus.BAD_REQUEST,
+          'Jadwal pesanan melebihi jam tutup salon atau salon belum buka. Pilih jadwal lain',
+          HttpStatus.UNPROCESSABLE_ENTITY,
         );
       }
 
       // The data checking must from transaction table with status "paid" and do check when user try to checkout
       // is the reservation conflict
-      // const conflict = await this.cartModel.findOne({
-      //   userId: { $ne: userId },
-      //   $expr: {
-      //     $and: [
-      //       { $lt: ['$reservationDate', endTime] },
-      //       {
-      //         $gt: [
-      //           { $add: ['$reservationDate', durationMs] },
-      //           new Date(startTime.getTime() + allowedOverlap),
-      //         ],
-      //       },
-      //     ],
-      //   },
-      // });
+      const conflict = await this.transactionItemModel.aggregate([
+        {
+          $lookup: {
+            from: 'transactions',
+            localField: 'transactionId',
+            foreignField: '_id',
+            as: 'transaction',
+          },
+        },
+        {
+          $unwind: '$transaction',
+        },
+        {
+          $match: {
+            'transaction.userId': { $ne: userId },
+            serviceStatus: ReservationStatus.SCHEDULED,
+            'transaction.status': ReservationStatus.PAID,
+            $expr: {
+              $and: [
+                { $lt: ['$reservationDate', endTime] },
+                {
+                  $gt: [
+                    { $add: ['$reservationDate', durationMs] },
+                    new Date(startTime.getTime() + allowedOverlap),
+                  ],
+                },
+              ],
+            },
+          },
+        },
+        { $limit: 1 },
+      ]);
 
-      // if (conflict) {
-      //   throw new HttpException(
-      //     'Jadwal pesanan bentrok  dengan pesanan lain. Pilih jadwal lain!',
-      //     HttpStatus.BAD_REQUEST,
-      //   );
-      // }
+      if (conflict.length !== 0) {
+        throw new HttpException(
+          `${message.length !== 0 ? message : 'Jadwal pesanan bentrok  dengan pesanan lain. Pilih jadwal lain!'}`,
+          HttpStatus.CONFLICT,
+        );
+      }
     }
   }
 }

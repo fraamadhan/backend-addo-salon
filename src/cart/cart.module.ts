@@ -9,6 +9,11 @@ import {
   ProductAssetsSchema,
 } from 'src/schemas/product-assets.schema';
 import { JwtService } from '@nestjs/jwt';
+import { Transaction, TransactionSchema } from 'src/schemas/transaction.schema';
+import {
+  TransactionItems,
+  TransactionItemsSchema,
+} from 'src/schemas/transaction-items.schema';
 
 @Module({
   imports: [
@@ -24,6 +29,14 @@ import { JwtService } from '@nestjs/jwt';
       {
         name: ProductAssets.name,
         schema: ProductAssetsSchema,
+      },
+      {
+        name: Transaction.name,
+        schema: TransactionSchema,
+      },
+      {
+        name: TransactionItems.name,
+        schema: TransactionItemsSchema,
       },
     ]),
   ],

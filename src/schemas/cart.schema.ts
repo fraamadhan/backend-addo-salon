@@ -16,6 +16,9 @@ export class Cart {
 
   @Prop({ default: null, index: true, type: Types.ObjectId, ref: 'Product' })
   productId!: Types.ObjectId;
+
+  @Prop({ default: false })
+  isCheckoutLocked!: boolean;
 }
 
 export const CartSchema = SchemaFactory.createForClass(Cart);

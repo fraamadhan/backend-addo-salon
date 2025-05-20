@@ -18,6 +18,9 @@ export class TransactionItems {
   @Prop({ default: null, index: true, type: Types.ObjectId, ref: 'Product' })
   productId!: Types.ObjectId;
 
+  @Prop({ default: null, maxlength: 200 })
+  note?: string;
+
   @Prop({
     required: true,
     type: Types.ObjectId,

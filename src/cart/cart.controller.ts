@@ -9,9 +9,15 @@ import {
   HttpStatus,
   UseGuards,
   Req,
+  Put,
+  HttpException,
 } from '@nestjs/common';
 import { CartService } from './cart.service';
-import { CreateCartDto } from './dto/create-cart.dto';
+import {
+  CreateCartDto,
+  UpdateCartDto,
+  UpdateCheckoutCartDto,
+} from './dto/create-cart.dto';
 import { responseError, responseSuccess } from 'src/utils/response';
 import Logger from 'src/logger';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
@@ -41,7 +47,7 @@ export class CartController {
         data,
       );
     } catch (error: any) {
-      this.logger.errorString(error as string);
+      this.logger.errorString(`[CartController - create] ${error as string}`);
       if (error.response && error.status) {
         return responseError(error.status, error.response);
       }
@@ -62,7 +68,9 @@ export class CartController {
 
       return responseSuccess(HttpStatus.OK, 'Data fetched successfully', data);
     } catch (error: any) {
-      this.logger.errorString(error as string);
+      this.logger.errorString(
+        `[CartController - get by all] ${error as string}`,
+      );
       if (error.response && error.status) {
         return responseError(error.status, error.response);
       }
@@ -73,17 +81,84 @@ export class CartController {
     }
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.cartService.findOne(+id);
+  @Put('/checkout')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN, RoleType.USER)
+  async updateCartCheckout(
+    @Req() req: Request,
+    @Body() body: UpdateCheckoutCartDto,
+  ) {
+    const userId = (req.user as UserPayload)._id;
+
+    try {
+      const data = await this.cartService.checkout(body, userId);
+
+      return responseSuccess(
+        HttpStatus.OK,
+        'Berhasil memperbarui keranjang',
+        data,
+      );
+    } catch (error: any) {
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
+      }
+      return responseError(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        'Internal server error',
+      );
+    }
   }
 
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updateCartDto: UpdateCartDto) {
-  //   return this.cartService.update(+id, updateCartDto);
-  // }
+  @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN, RoleType.USER)
+  async findOne(@Req() req: Request, @Param('id') id: string) {
+    const userId = (req.user as UserPayload)._id;
+    try {
+      const data = await this.cartService.findOne(id, userId);
+
+      return responseSuccess(
+        HttpStatus.OK,
+        'Item in cart fetched successfully',
+        data,
+      );
+    } catch (error: any) {
+      this.logger.errorString(
+        `[CartController - get by id] ${error as string}`,
+      );
+      if (error.response && error.status) {
+        return responseError(error.status, error.response);
+      }
+      return responseError(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        'Internal server error',
+      );
+    }
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN, RoleType.USER)
+  async update(@Param('id') id: string, @Body() body: UpdateCartDto) {
+    try {
+      const data = await this.cartService.update(id, body);
+
+      return responseSuccess(HttpStatus.OK, 'Item in cart updated', data);
+    } catch (error: any) {
+      this.logger.errorString(`[CartController - update] ${error as string}`);
+      if (error.status && error.response) {
+        return responseError(error.status, error.response);
+      }
+      return responseError(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        'Internal server error',
+      );
+    }
+  }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN, RoleType.USER)
   async remove(@Param('id') id: string) {
     try {
       const data = await this.cartService.remove(id);
@@ -92,7 +167,10 @@ export class CartController {
         deletedData: data,
       });
     } catch (error: any) {
-      this.logger.errorString(error as string);
+      this.logger.errorString(`[CartController - delete] ${error as string}`);
+      if (error.status && error.response) {
+        return responseError(error.status, error.response);
+      }
       return responseError(
         HttpStatus.INTERNAL_SERVER_ERROR,
         'Internal server error',
