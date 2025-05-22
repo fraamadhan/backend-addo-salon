@@ -11,7 +11,7 @@ export class EmailVerification {
   @Prop({ unique: true, index: true })
   email!: string;
 
-  @Prop({ index: true, default: new Date().getTime() + 3600 * 1000 })
+  @Prop({ index: true, default: () => new Date(Date.now() + 60 * 60 * 1000) })
   expired_time!: Date;
 }
 

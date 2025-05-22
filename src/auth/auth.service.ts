@@ -54,9 +54,10 @@ export class AuthService {
     body.password = hashedPassword;
 
     //create user
-    const data = await this.userModel.create(body);
+    const result = await this.userModel.create(body);
+    const { password: _, ...user } = result.toObject();
 
-    return data;
+    return user;
   }
 
   async login(body: LoginDTO) {
@@ -262,6 +263,7 @@ export class AuthService {
 
           if (existingToken) {
             existingToken.token = token;
+            existingToken.expired_time = new Date(Date.now() + 60 * 60 * 1000);
             await existingToken.save();
           } else {
             await this.emailVerifModel.create({
@@ -280,6 +282,7 @@ export class AuthService {
 
           if (existingToken) {
             existingToken.token = token;
+            existingToken.expired_time = new Date(Date.now() + 12 * 60 * 1000);
             await existingToken.save();
           } else {
             await this.passwordResetModel.create({

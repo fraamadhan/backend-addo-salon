@@ -1,6 +1,7 @@
 import {
   OnQueueActive,
   OnQueueCompleted,
+  OnQueueFailed,
   Process,
   Processor,
 } from '@nestjs/bull';
@@ -37,5 +38,10 @@ export class EmailVerificationProcessor {
   @OnQueueCompleted()
   onComplete(job: Job) {
     this.logger.log(`Job with ${job.id} compeleted`);
+  }
+
+  @OnQueueFailed()
+  onFailed(job: Job, error: any) {
+    console.error(`Job failed: ${job.name}`, error);
   }
 }

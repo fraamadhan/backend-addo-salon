@@ -13,6 +13,11 @@ import { SupabaseService } from './supabase/supabase.service';
 import { UserAssets, UserAssetsSchema } from './schemas/user-assets.schema';
 import { ProductsModule } from './products/products.module';
 import { ReviewsModule } from './reviews/reviews.module';
+import { CartModule } from './cart/cart.module';
+import { TransactionModule } from './transaction/transaction.module';
+import { MidtransModule } from './transaction/midtrans/midtrans.module';
+import { EmployeeModule } from './employee/employee.module';
+import { CmsTransactionModule } from './cms/transaction/transaction.module';
 
 @Module({
   imports: [
@@ -27,9 +32,7 @@ import { ReviewsModule } from './reviews/reviews.module';
         port: Number(process.env.REDIS_PORT),
       },
     }),
-    MongooseModule.forRoot(process.env.MONGO_URL ?? '', {
-      autoIndex: false,
-    }),
+    MongooseModule.forRoot(process.env.MONGO_URL ?? ''),
     MongooseModule.forFeature([
       {
         name: User.name,
@@ -58,6 +61,11 @@ import { ReviewsModule } from './reviews/reviews.module';
     CategoriesModule,
     ProductsModule,
     ReviewsModule,
+    CartModule,
+    TransactionModule,
+    MidtransModule,
+    EmployeeModule,
+    CmsTransactionModule,
   ],
   controllers: [AppController],
   providers: [AppService, SupabaseService],

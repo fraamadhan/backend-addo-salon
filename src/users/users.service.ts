@@ -8,9 +8,9 @@ import { prefix_public_user_file } from 'src/file-path';
 import { SupabaseService } from 'src/supabase/supabase.service';
 import { UserAssets, UserAssetsDocument } from 'src/schemas/user-assets.schema';
 import Logger from 'src/logger';
-import { ParamsSearchUserDto } from './dto/search.dto';
 import { sanitizeKeyword } from 'src/utils/sanitize-keyword';
 import { SortType } from 'src/types/sorttype';
+import { PaginationParams } from 'src/types/pagination';
 
 @Injectable()
 export class UsersService {
@@ -24,7 +24,7 @@ export class UsersService {
 
   private readonly logger = new Logger();
 
-  async findAll(params: ParamsSearchUserDto) {
+  async findAll(params: PaginationParams) {
     const page = params.page ?? 1;
     const limit = params.limit ?? 10;
     let keywordSanitized = '';

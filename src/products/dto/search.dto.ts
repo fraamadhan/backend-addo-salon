@@ -2,19 +2,8 @@ import { Type } from 'class-transformer';
 import { IsEnum, IsNumber, IsOptional, IsString } from 'class-validator';
 import { StyleType } from 'src/types/enum';
 import { PaginationParams } from 'src/types/pagination';
-import { SortType } from 'src/types/sorttype';
 
 export class ParamsSearchProductDto extends PaginationParams {
-  @IsOptional()
-  @Type(() => String)
-  @IsString()
-  sorttype?: SortType;
-
-  @IsOptional()
-  @Type(() => String)
-  @IsString()
-  sortby?: string;
-
   @IsOptional()
   @Type(() => String)
   @IsString()

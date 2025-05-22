@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import { ReservationStatus } from 'src/types/enum';
+import * as aggregateMongoose from 'mongoose-aggregate-paginate-v2';
 
 export type TransactionItemsDocument = HydratedDocument<TransactionItems>;
 
@@ -17,6 +18,9 @@ export class TransactionItems {
 
   @Prop({ default: null, index: true, type: Types.ObjectId, ref: 'Product' })
   productId!: Types.ObjectId;
+
+  @Prop({ default: null, maxlength: 200 })
+  note?: string;
 
   @Prop({
     required: true,
@@ -35,3 +39,4 @@ export class TransactionItems {
 
 export const TransactionItemsSchema =
   SchemaFactory.createForClass(TransactionItems);
+TransactionItemsSchema.plugin(aggregateMongoose);

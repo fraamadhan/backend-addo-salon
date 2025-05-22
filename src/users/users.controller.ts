@@ -21,7 +21,7 @@ import { RolesGuard } from 'src/auth/roles.guard';
 import { UserUpdateDto } from './dto/user.dto';
 import { responseError, responseSuccess } from 'src/utils/response';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ParamsSearchUserDto } from './dto/search.dto';
+import { PaginationParams } from 'src/types/pagination';
 
 @Controller('users')
 export class UsersController {
@@ -32,7 +32,7 @@ export class UsersController {
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleType.ADMIN)
-  async findAll(@Query() params: ParamsSearchUserDto) {
+  async findAll(@Query() params: PaginationParams) {
     try {
       const data = await this.usersService.findAll(params);
 
