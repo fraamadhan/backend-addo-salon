@@ -18,7 +18,8 @@ export const generateOrderCode = (fullName: string): string => {
   const day = String(now.getDate()).padStart(2, '0');
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const year = String(now.getFullYear()).slice(-2);
-  return `${initials}-${day}${month}${year}`;
+  const second = String(now.getSeconds()).padStart(2, '0');
+  return `${initials}-${day}${month}${year}-${second}`;
 };
 
 export const verifySignatureKey = (

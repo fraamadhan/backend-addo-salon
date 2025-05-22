@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import { ReservationStatus } from 'src/types/enum';
+import * as aggregateMongoose from 'mongoose-aggregate-paginate-v2';
 
 export type TransactionItemsDocument = HydratedDocument<TransactionItems>;
 
@@ -38,3 +39,4 @@ export class TransactionItems {
 
 export const TransactionItemsSchema =
   SchemaFactory.createForClass(TransactionItems);
+TransactionItemsSchema.plugin(aggregateMongoose);

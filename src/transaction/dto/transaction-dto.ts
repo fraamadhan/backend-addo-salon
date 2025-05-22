@@ -12,6 +12,8 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Types } from 'mongoose';
+import { ReservationStatus } from 'src/types/enum';
+import { PaginationParams } from 'src/types/pagination';
 
 export enum PaymentMethod {
   BANK_TRANSFER = 'bank_transfer',
@@ -96,4 +98,11 @@ class ItemsDto {
   @IsNumber()
   @IsNotEmpty()
   price!: number;
+}
+
+export class PaymentPaginationParams extends PaginationParams {
+  @IsEnum(ReservationStatus)
+  @IsString()
+  @IsOptional()
+  paymentStatus?: ReservationStatus;
 }

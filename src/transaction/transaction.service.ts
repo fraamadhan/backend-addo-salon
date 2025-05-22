@@ -3,8 +3,8 @@ import {
   CalculateBillDto,
   ChargeDto,
   CollectBillDto,
+  PaymentPaginationParams,
 } from './dto/transaction-dto';
-import { UpdateTransactionDto } from './dto/transaction-dto';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Product, ProductDocument } from 'src/schemas/product.schema';
 import mongoose, { Model, PaginateModel, Types } from 'mongoose';
@@ -32,6 +32,9 @@ import Logger from 'src/logger';
 import { MidtransService } from './midtrans/midtrans.service';
 import { MidtransChargeResponseType } from './midtrans/dto/response';
 import { Cart, CartDocument } from 'src/schemas/cart.schema';
+import { Query } from 'src/types/general';
+import { SortType } from 'src/types/sorttype';
+import { sanitizeKeyword } from 'src/utils/sanitize-keyword';
 
 @Injectable()
 export class TransactionService {
@@ -65,7 +68,8 @@ export class TransactionService {
       );
     }
 
-    const products = body.items.map((item) => item.productId);
+    const reservationDates = body.items.map((item) => item.reservationDate);
+    const products = body.items.map((item) => toObjectId(item.productId));
 
     const session = await this.connection.startSession();
     session.startTransaction();
@@ -139,6 +143,7 @@ export class TransactionService {
               bank: body.bank,
               orderCode: orderCode,
               paymentMethod: body.paymentMethod,
+              total_price: Number(response.gross_amount),
             },
           },
           {
@@ -152,7 +157,7 @@ export class TransactionService {
             transactionId: toObjectId(transaction._id),
           },
           {
-            serviceStatus: ReservationStatus.PENDING,
+            serviceStatus: ReservationStatus.UNPAID,
           },
           {
             session: session,
@@ -163,6 +168,8 @@ export class TransactionService {
           {
             isCheckoutLocked: true,
             productId: { $in: products },
+            reservationDate: { $in: reservationDates },
+            userId: userObjectId,
           },
           { session: session },
         );
@@ -208,7 +215,7 @@ export class TransactionService {
         if (fraudStatus === 'accept') {
           await this.updateAfterHandlePayment(
             body,
-            ReservationStatus.PAID,
+            ReservationStatus.SCHEDULED,
             ReservationStatus.SCHEDULED,
           );
         }
@@ -270,6 +277,19 @@ export class TransactionService {
       throw error;
     } finally {
       await session.endSession();
+    }
+  }
+
+  async getTransactionStatuMidtrans(orderId: string) {
+    try {
+      const data = await this.midtransService.getStatus(orderId);
+
+      return data;
+    } catch (error: any) {
+      this.logger.errorString(
+        `[TransactionService - Get Transaction Status Midtrans] ${error as string}`,
+      );
+      throw error;
     }
   }
 
@@ -358,20 +378,154 @@ export class TransactionService {
     return { chargeBody, orderCode };
   }
 
-  findAll() {
-    return `This action returns all transaction`;
+  async findTransaction(
+    params: PaymentPaginationParams,
+    type: 'payment' | 'order',
+  ) {
+    const page = params.page ?? 1;
+    const limit = params.limit ?? 15;
+    const keyword = params.keyword;
+    let keywordSanitized = '';
+    const query: Query = {
+      $and: [],
+    };
+
+    const sorttype = params.sorttype === SortType.asc ? 1 : -1;
+    const sortby = params.sortby ?? 'createdAt';
+
+    const sort: Record<string, number> = {
+      [sortby]: sorttype,
+    };
+
+    if (type === 'payment') {
+      query.$and.push({
+        status: {
+          $in: [
+            ReservationStatus.PAID,
+            ReservationStatus.UNPAID,
+            ReservationStatus.CANCELED,
+          ],
+        },
+      });
+    } else {
+      query.$and.push({
+        status: {
+          $nin: [ReservationStatus.CART, ReservationStatus.PENDING],
+        },
+      });
+    }
+
+    if (keyword) {
+      const result = sanitizeKeyword(keyword);
+
+      keywordSanitized = result.keywordSanitized;
+    }
+
+    if (keywordSanitized.length !== 0) {
+      query.$and.push({
+        orderCode: {
+          $regex: new RegExp(`${keywordSanitized}`, 'i'),
+        },
+      });
+    }
+
+    if (params.paymentStatus) {
+      query.$and[0] = {
+        status: params.paymentStatus,
+      };
+    }
+
+    const result = await this.transactionModel.paginate(query, {
+      page,
+      limit,
+      sort,
+      lean: true,
+      collation: {
+        locale: 'en',
+        strength: 1,
+      },
+    });
+
+    const transactionIds = result.docs.map((doc) => doc._id);
+    const items = await this.transactionItemModel
+      .find({ transactionId: { $in: transactionIds } })
+      .populate('productId')
+      .lean();
+
+    const groupedItems = items.reduce(
+      (acc, item) => {
+        const tid = item.transactionId.toString();
+        if (!acc[tid]) acc[tid] = [];
+        acc[tid].push({
+          ...item,
+          product: item.productId,
+        });
+        return acc;
+      },
+      {} as Record<string, any[]>,
+    );
+
+    const mappedTransactions = result.docs.map((doc) => ({
+      ...doc,
+      items: groupedItems[doc._id.toString()] ?? [],
+    }));
+
+    const totalItem = result.totalDocs;
+    const pageCount = result.totalPages;
+    const hasPrevPage = result.hasPrevPage;
+    const hasNextPage = result.hasNextPage;
+    const prevPage = result.prevPage;
+    const nextPage = result.nextPage;
+
+    const paginator = {
+      totalItem,
+      limit,
+      pageCount,
+      page,
+      hasPrevPage,
+      hasNextPage,
+      prevPage,
+      nextPage,
+    };
+
+    return {
+      [type === 'payment' ? 'payments' : 'orders']: mappedTransactions,
+      paginator,
+    };
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} transaction`;
-  }
+  async findOne(id: string) {
+    const transactionObjectId = toObjectId(id);
 
-  update(id: number, body: UpdateTransactionDto) {
-    return `This action updates a #${id} transaction`;
-  }
+    if (!transactionObjectId) {
+      throw new HttpException(
+        'Transaksi tidak ditemukan',
+        HttpStatus.NOT_FOUND,
+      );
+    }
 
-  remove(id: number) {
-    return `This action removes a #${id} transaction`;
+    const transaction = await this.transactionModel.findById(id).lean().exec();
+    const transactionItems = await this.transactionItemModel
+      .find({
+        transactionId: transactionObjectId,
+      })
+      .populate('productId')
+      .lean()
+      .exec();
+
+    const mappedTransactionItems = transactionItems.map((item) => {
+      const { productId: product, ...rest } = item;
+
+      return {
+        ...rest,
+        product,
+      };
+    });
+
+    return {
+      ...transaction,
+      items: mappedTransactionItems,
+    };
   }
 
   async collectBill(body: CollectBillDto, userId: string) {
@@ -482,7 +636,7 @@ export class TransactionService {
       .exec();
 
     const data = {
-      transaction,
+      ...transaction,
       items: transactionItems,
       transactionFee: 0,
       grandTotalPrice: 0,
@@ -493,10 +647,10 @@ export class TransactionService {
         data.transactionFee = 4000;
         break;
       case 'gopay':
-        data.transactionFee = 0.02 * transaction.total_price;
+        data.transactionFee = Math.round(0.02 * transaction.total_price);
         break;
       case 'qris':
-        data.transactionFee = 0.007 * transaction.total_price;
+        data.transactionFee = Math.round(0.007 * transaction.total_price);
         break;
     }
     data.grandTotalPrice += transaction.total_price + data.transactionFee;

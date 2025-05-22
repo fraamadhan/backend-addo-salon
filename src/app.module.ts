@@ -16,6 +16,8 @@ import { ReviewsModule } from './reviews/reviews.module';
 import { CartModule } from './cart/cart.module';
 import { TransactionModule } from './transaction/transaction.module';
 import { MidtransModule } from './transaction/midtrans/midtrans.module';
+import { EmployeeModule } from './employee/employee.module';
+import { CmsTransactionModule } from './cms/transaction/transaction.module';
 
 @Module({
   imports: [
@@ -30,9 +32,7 @@ import { MidtransModule } from './transaction/midtrans/midtrans.module';
         port: Number(process.env.REDIS_PORT),
       },
     }),
-    MongooseModule.forRoot(process.env.MONGO_URL ?? '', {
-      autoIndex: false,
-    }),
+    MongooseModule.forRoot(process.env.MONGO_URL ?? ''),
     MongooseModule.forFeature([
       {
         name: User.name,
@@ -64,6 +64,8 @@ import { MidtransModule } from './transaction/midtrans/midtrans.module';
     CartModule,
     TransactionModule,
     MidtransModule,
+    EmployeeModule,
+    CmsTransactionModule,
   ],
   controllers: [AppController],
   providers: [AppService, SupabaseService],

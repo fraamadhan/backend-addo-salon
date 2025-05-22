@@ -7,6 +7,14 @@ export type ProductQuery = {
   $and: Record<string, any>[];
 };
 
+export type Query = {
+  $and: Record<string, any>[];
+};
+
+export type NameQuery = {
+  $or: Record<string, any>[];
+};
+
 export type UserPayload = {
   _id: string;
   name: string;

@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import { PaymentMethod, ReservationStatus } from 'src/types/enum';
+import * as mongoosePaginate from 'mongoose-paginate-v2';
 
 export type TransactionDocument = HydratedDocument<Transaction>;
 
@@ -19,10 +20,20 @@ export class Transaction {
   orderCode?: string;
 
   @Prop({ enum: PaymentMethod, default: null })
-  paymentMethod?: PaymentMethod;
+  paymentMethod?: PaymentMethod | string;
 
   @Prop({ default: null })
   bank?: string;
+
+  @Prop({ default: 'online' })
+  transactionType?: string;
+
+  @Prop({ default: null, maxlength: 100 })
+  customerName?: string;
+
+  @Prop({ default: null, maxlength: 100 })
+  serviceName?: string;
 }
 
 export const TransactionSchema = SchemaFactory.createForClass(Transaction);
+TransactionSchema.plugin(mongoosePaginate);

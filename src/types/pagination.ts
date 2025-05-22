@@ -6,6 +6,7 @@ import {
   IsString,
   Min,
 } from 'class-validator';
+import { SortType } from './sorttype';
 
 export class PaginationParams {
   @IsOptional()
@@ -29,6 +30,16 @@ export class PaginationParams {
   @Type(() => String)
   @IsString()
   slug?: string;
+
+  @IsOptional()
+  @Type(() => String)
+  @IsString()
+  sorttype?: SortType;
+
+  @IsOptional()
+  @Type(() => String)
+  @IsString()
+  sortby?: string;
 
   //filter by category
   @IsOptional()

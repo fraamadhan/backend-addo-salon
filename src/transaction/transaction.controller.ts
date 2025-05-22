@@ -3,21 +3,20 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
-  Delete,
   HttpStatus,
   Req,
   UseGuards,
   HttpException,
+  Query,
 } from '@nestjs/common';
 import { TransactionService } from './transaction.service';
 import {
   CalculateBillDto,
   ChargeDto,
   CollectBillDto,
+  PaymentPaginationParams,
 } from './dto/transaction-dto';
-import { UpdateTransactionDto } from './dto/transaction-dto';
 import Logger from 'src/logger';
 import { responseError, responseSuccess } from 'src/utils/response';
 import { Request } from 'express';
@@ -122,26 +121,80 @@ export class TransactionController {
     }
   }
 
-  @Get()
-  findAll() {
-    return this.transactionService.findAll();
+  @Get('/status/:orderId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN, RoleType.USER)
+  async getStatusTransactionMidtrans(@Param('orderId') orderId: string) {
+    try {
+      const data =
+        await this.transactionService.getTransactionStatuMidtrans(orderId);
+
+      return responseSuccess(HttpStatus.OK, 'Success', data);
+    } catch (error: any) {
+      this.logger.errorString(
+        `[TransactionController - get Status transaction Midtrans] ${error as string}`,
+      );
+      return responseError(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        'Internal server error',
+      );
+    }
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.transactionService.findOne(+id);
+  @Get('/payments')
+  async findPayments(@Query() params: PaymentPaginationParams) {
+    try {
+      const data = await this.transactionService.findTransaction(
+        params,
+        'payment',
+      );
+
+      return responseSuccess(HttpStatus.OK, 'Success', data);
+    } catch (error) {
+      this.logger.errorString(
+        `[TransactionController - get payments] ${error as string}`,
+      );
+      return responseError(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        'Internal server error',
+      );
+    }
   }
 
-  @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() updateTransactionDto: UpdateTransactionDto,
-  ) {
-    return this.transactionService.update(+id, updateTransactionDto);
+  @Get('/orders')
+  async getOrders(@Query() params: PaymentPaginationParams) {
+    try {
+      const data = await this.transactionService.findTransaction(
+        params,
+        'order',
+      );
+
+      return responseSuccess(HttpStatus.OK, 'Success', data);
+    } catch (error) {
+      this.logger.errorString(
+        `[TransactionController - get payments] ${error as string}`,
+      );
+      return responseError(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        'Internal server error',
+      );
+    }
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.transactionService.remove(+id);
+  @Get('/order/:id')
+  async findOne(@Param('id') id: string) {
+    try {
+      const data = await this.transactionService.findOne(id);
+
+      return responseSuccess(HttpStatus.OK, 'Success', data);
+    } catch (error) {
+      this.logger.errorString(
+        `[TransactionController - get payments] ${error as string}`,
+      );
+      return responseError(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        'Internal server error',
+      );
+    }
   }
 }
