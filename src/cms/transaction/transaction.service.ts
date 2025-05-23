@@ -291,6 +291,17 @@ export class CmsTransactionService {
       matchStages['serviceStatus'] = params.orderStatus;
     }
 
+    if (params.startDate) {
+      matchStages['transaction.createdAt'] = {
+        $gte: params.startDate,
+      };
+    }
+    if (params.endDate) {
+      matchStages['transaction.createdAt'] = {
+        $lte: params.endDate,
+      };
+    }
+
     if (params.productId) {
       matchStages['product._id'] = toObjectId(params.productId);
     }
@@ -431,12 +442,35 @@ export class CmsTransactionService {
       .lean()
       .exec()) as unknown as TransactionItemWithPopulatedRefs[];
 
+    const productIds = [
+      ...new Set(
+        transactionItems.map((item) => item.productId._id).filter(Boolean),
+      ),
+    ];
+
+    const assets = await this.productAssetModel
+      .find(
+        {
+          productId: { $in: productIds },
+        },
+        { productId: 1, publicUrl: 1 },
+      )
+      .lean()
+      .exec();
+
+    const assetsMap: Map<string, string> = new Map(
+      assets.map((value) => [value.productId.toString(), value.publicUrl]),
+    );
+
     const mappedTransactionItems = transactionItems.map((item) => {
       const { productId: product, employeeId: employee, ...rest } = item;
 
       return {
         ...rest,
-        product,
+        product: {
+          ...product,
+          assetRef: assetsMap.get(product._id.toString()),
+        },
         employee,
       };
     });

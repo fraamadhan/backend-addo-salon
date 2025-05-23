@@ -142,6 +142,8 @@ export class TransactionController {
   }
 
   @Get('/payments')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN, RoleType.USER)
   async findPayments(@Query() params: PaymentPaginationParams) {
     try {
       const data = await this.transactionService.findTransaction(
@@ -162,6 +164,8 @@ export class TransactionController {
   }
 
   @Get('/orders')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN, RoleType.USER)
   async getOrders(@Query() params: PaymentPaginationParams) {
     try {
       const data = await this.transactionService.findTransaction(
@@ -182,6 +186,8 @@ export class TransactionController {
   }
 
   @Get('/order/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN, RoleType.USER)
   async findOne(@Param('id') id: string) {
     try {
       const data = await this.transactionService.findOne(id);
