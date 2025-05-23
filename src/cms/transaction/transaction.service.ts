@@ -36,7 +36,7 @@ import {
   AggregatedResult,
   TransactionItemWithPopulatedRefs,
 } from 'src/types/transaction';
-import { NameQuery } from 'src/types/general';
+import { OrQuery } from 'src/types/general';
 
 @Injectable()
 export class CmsTransactionService {
@@ -197,6 +197,7 @@ export class CmsTransactionService {
                   transactionId: 1,
                   serviceStatus: 1,
                   reservationDate: 1,
+                  price: 1,
                   note: 1,
                   product: {
                     _id: '$product._id',
@@ -250,7 +251,7 @@ export class CmsTransactionService {
       [sortby]: sorttype,
     };
     let keywordSanitized = '';
-    const matchNameStage: NameQuery = {
+    const matchNameStage: OrQuery = {
       $or: [],
     };
 
@@ -291,15 +292,18 @@ export class CmsTransactionService {
       matchStages['serviceStatus'] = params.orderStatus;
     }
 
-    if (params.startDate) {
-      matchStages['transaction.createdAt'] = {
-        $gte: params.startDate,
-      };
-    }
-    if (params.endDate) {
-      matchStages['transaction.createdAt'] = {
-        $lte: params.endDate,
-      };
+    if (params.startDate || params.endDate) {
+      const dateFilter: Record<string, Date> = {};
+
+      if (params.startDate) {
+        dateFilter['$gte'] = new Date(params.startDate);
+      }
+
+      if (params.endDate) {
+        dateFilter['$lte'] = new Date(params.endDate);
+      }
+
+      matchStages['transaction.createdAt'] = dateFilter;
     }
 
     if (params.productId) {
@@ -384,6 +388,7 @@ export class CmsTransactionService {
           transactionId: 1,
           serviceStatus: 1,
           reservationDate: 1,
+          price: 1,
           note: 1,
           product: {
             _id: {
@@ -408,6 +413,7 @@ export class CmsTransactionService {
             _id: '$transaction._id',
             orderCode: '$transaction.orderCode',
             status: '$transaction.status',
+            createdAt: '$transaction.createdAt',
           },
         },
       },
