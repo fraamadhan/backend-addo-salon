@@ -25,6 +25,7 @@ import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { RoleType } from 'src/types/role';
 import { Roles } from 'src/utils/custom-decorator/roles.decorator';
+import { ScheduleQueryParams } from 'src/types/transaction';
 
 @Controller('transaction')
 export class TransactionController {
@@ -144,11 +145,16 @@ export class TransactionController {
   @Get('/payments')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleType.ADMIN, RoleType.USER)
-  async findPayments(@Query() params: PaymentPaginationParams) {
+  async findPayments(
+    @Req() req: Request,
+    @Query() params: PaymentPaginationParams,
+  ) {
+    const userId = (req.user as UserPayload)._id;
     try {
       const data = await this.transactionService.findTransaction(
         params,
         'payment',
+        userId,
       );
 
       return responseSuccess(HttpStatus.OK, 'Success', data);
@@ -166,11 +172,16 @@ export class TransactionController {
   @Get('/orders')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleType.ADMIN, RoleType.USER)
-  async getOrders(@Query() params: PaymentPaginationParams) {
+  async getOrders(
+    @Req() req: Request,
+    @Query() params: PaymentPaginationParams,
+  ) {
+    const userId = (req.user as UserPayload)._id;
     try {
       const data = await this.transactionService.findTransaction(
         params,
         'order',
+        userId,
       );
 
       return responseSuccess(HttpStatus.OK, 'Success', data);
@@ -178,6 +189,24 @@ export class TransactionController {
       this.logger.errorString(
         `[TransactionController - get payments] ${error as string}`,
       );
+      return responseError(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        'Internal server error',
+      );
+    }
+  }
+
+  @Get('/schedule')
+  async getSchedule(@Query() params: ScheduleQueryParams) {
+    try {
+      const data = await this.transactionService.getSchedule(params);
+
+      return responseSuccess(HttpStatus.OK, 'Success', data);
+    } catch (error) {
+      this.logger.errorString(
+        `[TransactionController - get schedule] ${error as string}`,
+      );
+
       return responseError(
         HttpStatus.INTERNAL_SERVER_ERROR,
         'Internal server error',

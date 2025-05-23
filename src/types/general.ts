@@ -11,7 +11,7 @@ export type Query = {
   $and: Record<string, any>[];
 };
 
-export type NameQuery = {
+export type OrQuery = {
   $or: Record<string, any>[];
 };
 

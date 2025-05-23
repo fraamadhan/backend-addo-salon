@@ -7,7 +7,12 @@ import {
 } from './dto/transaction-dto';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Product, ProductDocument } from 'src/schemas/product.schema';
-import mongoose, { Model, PaginateModel, Types } from 'mongoose';
+import mongoose, {
+  AggregatePaginateModel,
+  Model,
+  PaginateModel,
+  Types,
+} from 'mongoose';
 import {
   Transaction,
   TransactionDocument,
@@ -35,6 +40,7 @@ import { Cart, CartDocument } from 'src/schemas/cart.schema';
 import { Query } from 'src/types/general';
 import { SortType } from 'src/types/sorttype';
 import { sanitizeKeyword } from 'src/utils/sanitize-keyword';
+import { ScheduleQueryParams } from 'src/types/transaction';
 
 @Injectable()
 export class TransactionService {
@@ -42,7 +48,7 @@ export class TransactionService {
     @InjectModel(Transaction.name)
     private readonly transactionModel: PaginateModel<TransactionDocument>,
     @InjectModel(TransactionItems.name)
-    private readonly transactionItemModel: Model<TransactionItemsDocument>,
+    private readonly transactionItemModel: AggregatePaginateModel<TransactionItemsDocument>,
     @InjectModel(Product.name)
     private readonly productModel: Model<ProductDocument>,
     @InjectModel(ProductAssets.name)
@@ -381,13 +387,21 @@ export class TransactionService {
   async findTransaction(
     params: PaymentPaginationParams,
     type: 'payment' | 'order',
+    userId: string,
   ) {
     const page = params.page ?? 1;
     const limit = params.limit ?? 15;
     const keyword = params.keyword;
     let keywordSanitized = '';
+    const userObjectId = toObjectId(userId);
+    if (!userObjectId) {
+      throw new HttpException(
+        'Failed to convert user id to object id',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     const query: Query = {
-      $and: [],
+      $and: [{ userId: userObjectId }],
     };
 
     const sorttype = params.sorttype === SortType.asc ? 1 : -1;
@@ -403,7 +417,8 @@ export class TransactionService {
           $in: [
             ReservationStatus.PAID,
             ReservationStatus.UNPAID,
-            ReservationStatus.CANCELED,
+            ReservationStatus.SCHEDULED,
+            ReservationStatus.IN_PROGRESS,
           ],
         },
       });
@@ -414,6 +429,8 @@ export class TransactionService {
             ReservationStatus.CART,
             ReservationStatus.PENDING,
             ReservationStatus.UNPAID,
+            ReservationStatus.PAID,
+            ReservationStatus.IN_PROGRESS,
           ],
         },
       });
@@ -496,6 +513,168 @@ export class TransactionService {
       [type === 'payment' ? 'payments' : 'orders']: mappedTransactions,
       paginator,
     };
+  }
+
+  async getSchedule(params: ScheduleQueryParams) {
+    const page = params.page ?? 1;
+    const limit = params.limit ?? 15;
+    const query: Query = {
+      $and: [
+        {
+          serviceStatus: {
+            $in: [ReservationStatus.PAID, ReservationStatus.SCHEDULED],
+          },
+        },
+      ],
+    };
+
+    const sorttype = params.sorttype === SortType.asc ? 1 : -1;
+    const sortby = params.sortby ?? 'reservationDate';
+    let startDate: Date | undefined;
+    let endDate: Date | undefined;
+
+    const sort: Record<string, any> = {
+      [sortby]: sorttype,
+    };
+
+    if (params.reservationDate) {
+      query.$and.push({
+        reservationDate: new Date(params.reservationDate),
+      });
+    }
+    if (params.startDate) startDate = new Date(params.startDate);
+    if (params.endDate) endDate = new Date(params.endDate);
+
+    if (startDate || endDate) {
+      if (startDate) {
+        query.$and.push({
+          reservationDate: {
+            $gte: startDate,
+          },
+        });
+      }
+      if (endDate) {
+        query.$and.push({
+          reservationDate: {
+            $lte: endDate,
+          },
+        });
+      }
+    }
+
+    const customLabels = {
+      totalDocs: 'totalItem',
+      docs: 'schedules',
+      limit: 'limit',
+      page: 'currentPage',
+      nextPage: 'nextPage',
+      prevPage: 'prevPage',
+      totalPages: 'pageCount',
+      hasPrevPage: 'hasPrev',
+      hasNextPage: 'hasNext',
+      pagingCounter: 'pageCounter',
+      meta: 'paginator',
+    };
+
+    const options = {
+      page,
+      limit,
+      customLabels,
+    };
+
+    const aggregate = this.transactionItemModel.aggregate([
+      {
+        $lookup: {
+          from: 'transactions',
+          foreignField: '_id',
+          localField: 'transactionId',
+          as: 'transaction',
+        },
+      },
+      {
+        $unwind: {
+          path: '$transaction',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          foreignField: '_id',
+          localField: 'transaction.userId',
+          as: 'user',
+        },
+      },
+      {
+        $unwind: {
+          path: '$user',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: 'products',
+          foreignField: '_id',
+          localField: 'productId',
+          as: 'product',
+        },
+      },
+      {
+        $unwind: {
+          path: '$product',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $match: {
+          ...query,
+        },
+      },
+      {
+        $sort: sort,
+      },
+      {
+        $project: {
+          _id: 1,
+          transactionId: 1,
+          serviceStatus: 1,
+          reservationDate: 1,
+          note: 1,
+          price: 1,
+          product: {
+            _id: {
+              $ifNull: ['$product._id', null],
+            },
+            name: {
+              $ifNull: ['$product.name', '$transaction.serviceName'],
+            },
+            price: {
+              $ifNull: ['$product.price', '$price'],
+            },
+          },
+          user: {
+            _id: {
+              $ifNull: ['$user._id', null],
+            },
+            name: {
+              $ifNull: ['$user.name', '$transaction.customerName'],
+            },
+          },
+          transaction: {
+            _id: '$transaction._id',
+            orderCode: '$transaction.orderCode',
+            status: '$transaction.status',
+          },
+        },
+      },
+    ]);
+
+    const result = await this.transactionItemModel.aggregatePaginate(
+      aggregate,
+      options,
+    );
+
+    return result;
   }
 
   async findOne(id: string) {

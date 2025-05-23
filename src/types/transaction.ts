@@ -1,4 +1,7 @@
+import { IsDate, IsOptional } from 'class-validator';
 import { ReservationStatus } from './enum';
+import { Type } from 'class-transformer';
+import { PaginationParams } from './pagination';
 
 type UserSummary = {
   _id: string;
@@ -75,3 +78,20 @@ export type Paginator = {
   prev: number | null;
   next: number | null;
 };
+
+export class ScheduleQueryParams extends PaginationParams {
+  @IsDate()
+  @IsOptional()
+  @Type(() => Date)
+  reservationDate?: Date;
+
+  @IsDate()
+  @IsOptional()
+  @Type(() => Date)
+  startDate?: Date;
+
+  @IsDate()
+  @IsOptional()
+  @Type(() => Date)
+  endDate?: Date;
+}
