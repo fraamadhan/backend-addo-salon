@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
   IsDate,
   IsEnum,
@@ -54,11 +55,22 @@ export class TransactionQueryParams extends PaginationParams {
 
   @IsDate()
   @IsOptional()
+  @Type(() => Date)
   reservationDate?: Date;
 
   @IsMongoId()
   @IsOptional()
   productId?: Types.ObjectId;
+
+  @IsDate()
+  @IsOptional()
+  @Type(() => Date)
+  startDate?: Date;
+
+  @IsDate()
+  @IsOptional()
+  @Type(() => Date)
+  endDate?: Date;
 }
 
 export class CmsCreateTransactionDto {

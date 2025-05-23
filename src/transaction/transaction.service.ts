@@ -410,7 +410,11 @@ export class TransactionService {
     } else {
       query.$and.push({
         status: {
-          $nin: [ReservationStatus.CART, ReservationStatus.PENDING],
+          $nin: [
+            ReservationStatus.CART,
+            ReservationStatus.PENDING,
+            ReservationStatus.UNPAID,
+          ],
         },
       });
     }
@@ -513,12 +517,35 @@ export class TransactionService {
       .lean()
       .exec();
 
+    const productIds = [
+      ...new Set(
+        transactionItems.map((item) => item.productId._id).filter(Boolean),
+      ),
+    ];
+
+    const assets = await this.productAssetModel
+      .find(
+        {
+          productId: { $in: productIds },
+        },
+        { productId: 1, publicUrl: 1 },
+      )
+      .lean()
+      .exec();
+
+    const assetsMap: Map<string, string> = new Map(
+      assets.map((value) => [value.productId.toString(), value.publicUrl]),
+    );
+
     const mappedTransactionItems = transactionItems.map((item) => {
       const { productId: product, ...rest } = item;
 
       return {
         ...rest,
-        product,
+        product: {
+          ...product,
+          assetRef: assetsMap.get(product._id.toString()),
+        },
       };
     });
 

@@ -50,16 +50,17 @@ export type TransactionResponse = {
 
 export type TransactionItem = {
   _id: string;
-  reservationDate: string; // bisa juga pakai Date kalau ingin langsung di-convert
+  reservationDate: string;
   note: string;
   transactionId: string;
-  serviceStatus: ReservationStatus; // sesuaikan dengan status yang mungkin
+  serviceStatus: ReservationStatus;
   transaction: TransactionSummary;
   user: UserSummary;
   product: {
     _id: string;
     name: string;
     price: number;
+    assetRef?: string;
   };
 };
 

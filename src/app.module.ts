@@ -18,6 +18,7 @@ import { TransactionModule } from './transaction/transaction.module';
 import { MidtransModule } from './transaction/midtrans/midtrans.module';
 import { EmployeeModule } from './employee/employee.module';
 import { CmsTransactionModule } from './cms/transaction/transaction.module';
+import { DashboardModule } from './cms/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { CmsTransactionModule } from './cms/transaction/transaction.module';
     MidtransModule,
     EmployeeModule,
     CmsTransactionModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService, SupabaseService],
