@@ -48,8 +48,8 @@ export class CartController {
       );
     } catch (error: any) {
       this.logger.errorString(`[CartController - create] ${error as string}`);
-      if (error.response && error.status) {
-        return responseError(error.status, error.response);
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
       }
       return responseError(
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -60,7 +60,7 @@ export class CartController {
 
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleType.USER)
+  @Roles(RoleType.USER, RoleType.ADMIN)
   async findAll(@Req() req: Request) {
     const userId = (req.user as UserPayload)._id;
     try {
@@ -71,8 +71,8 @@ export class CartController {
       this.logger.errorString(
         `[CartController - get by all] ${error as string}`,
       );
-      if (error.response && error.status) {
-        return responseError(error.status, error.response);
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
       }
       return responseError(
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -126,8 +126,8 @@ export class CartController {
       this.logger.errorString(
         `[CartController - get by id] ${error as string}`,
       );
-      if (error.response && error.status) {
-        return responseError(error.status, error.response);
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
       }
       return responseError(
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -146,8 +146,8 @@ export class CartController {
       return responseSuccess(HttpStatus.OK, 'Item in cart updated', data);
     } catch (error: any) {
       this.logger.errorString(`[CartController - update] ${error as string}`);
-      if (error.status && error.response) {
-        return responseError(error.status, error.response);
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
       }
       return responseError(
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -168,8 +168,8 @@ export class CartController {
       });
     } catch (error: any) {
       this.logger.errorString(`[CartController - delete] ${error as string}`);
-      if (error.status && error.response) {
-        return responseError(error.status, error.response);
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
       }
       return responseError(
         HttpStatus.INTERNAL_SERVER_ERROR,

@@ -517,7 +517,7 @@ export class TransactionService {
 
   async getSchedule(params: ScheduleQueryParams) {
     const page = params.page ?? 1;
-    const limit = params.limit ?? 15;
+    const limit = params.limit ?? 10;
     const query: Query = {
       $and: [
         {
@@ -530,8 +530,8 @@ export class TransactionService {
 
     const sorttype = params.sorttype === SortType.asc ? 1 : -1;
     const sortby = params.sortby ?? 'reservationDate';
-    let startDate: Date | undefined;
-    let endDate: Date | undefined;
+    let startDate: Date | undefined | string;
+    let endDate: Date | undefined | string;
 
     const sort: Record<string, any> = {
       [sortby]: sorttype,
@@ -564,14 +564,13 @@ export class TransactionService {
 
     const customLabels = {
       totalDocs: 'totalItem',
-      docs: 'schedules',
       limit: 'limit',
       page: 'currentPage',
       nextPage: 'nextPage',
       prevPage: 'prevPage',
       totalPages: 'pageCount',
-      hasPrevPage: 'hasPrev',
-      hasNextPage: 'hasNext',
+      hasPrevPage: 'hasPrevPage',
+      hasNextPage: 'hasNextPage',
       pagingCounter: 'pageCounter',
       meta: 'paginator',
     };
@@ -626,6 +625,20 @@ export class TransactionService {
         },
       },
       {
+        $lookup: {
+          from: 'employees',
+          foreignField: '_id',
+          localField: 'employeeId',
+          as: 'employee',
+        },
+      },
+      {
+        $unwind: {
+          path: '$employee',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
         $match: {
           ...query,
         },
@@ -651,6 +664,9 @@ export class TransactionService {
             price: {
               $ifNull: ['$product.price', '$price'],
             },
+            estimation: {
+              $ifNull: ['$product.estimation', 0],
+            },
           },
           user: {
             _id: {
@@ -665,14 +681,142 @@ export class TransactionService {
             orderCode: '$transaction.orderCode',
             status: '$transaction.status',
           },
+          employee: {
+            _id: {
+              $ifNull: ['$employee._id', null],
+            },
+            name: {
+              $ifNull: ['$employee.name', null],
+            },
+          },
         },
       },
+      {
+        $addFields: {
+          estimation: {
+            $ifNull: ['$product.estimation', 0],
+          },
+          reservationDate: '$reservationDate',
+        },
+      },
+      {
+        $facet: {
+          items: [
+            {
+              $project: {
+                _id: 1,
+                transactionId: 1,
+                reservationDate: 1,
+                estimation: 1,
+                serviceStatus: 1,
+                note: 1,
+                price: 1,
+                product: {
+                  _id: { $ifNull: ['$product._id', null] },
+                  name: {
+                    $ifNull: ['$product.name', '$transaction.serviceName'],
+                  },
+                  price: { $ifNull: ['$product.price', '$price'] },
+                  estimation: '$estimation',
+                },
+                user: {
+                  _id: '$user._id',
+                  name: '$user.name',
+                },
+                transaction: {
+                  _id: '$transaction._id',
+                  orderCode: '$transaction.orderCode',
+                  status: '$transaction.status',
+                  reservationDate: '$reservationDate',
+                },
+                employee: {
+                  _id: {
+                    $ifNull: ['$employee._id', null],
+                  },
+                  name: {
+                    $ifNull: ['$employee.name', null],
+                  },
+                },
+              },
+            },
+          ],
+          estimationsPerTransaction: [
+            {
+              $group: {
+                _id: '$transactionId',
+                totalEstimation: { $sum: '$estimation' },
+                reservationDate: { $first: '$reservationDate' },
+              },
+            },
+            {
+              $addFields: {
+                estimatedFinishDate: {
+                  $add: [
+                    '$reservationDate',
+                    { $multiply: ['$totalEstimation', 60 * 60 * 1000] },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+      },
+      {
+        $project: {
+          joined: {
+            $map: {
+              input: '$items',
+              as: 'item',
+              in: {
+                $mergeObjects: [
+                  '$$item',
+                  {
+                    $let: {
+                      vars: {
+                        match: {
+                          $arrayElemAt: [
+                            {
+                              $filter: {
+                                input: '$estimationsPerTransaction',
+                                as: 'est',
+                                cond: {
+                                  $eq: ['$$est._id', '$$item.transactionId'],
+                                },
+                              },
+                            },
+                            0,
+                          ],
+                        },
+                      },
+                      in: {
+                        totalEstimationPerTransaction:
+                          '$$match.totalEstimation',
+                        estimatedFinishDatePerTransaction:
+                          '$$match.estimatedFinishDate',
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      },
+      { $unwind: '$joined' },
+      { $replaceRoot: { newRoot: '$joined' } },
     ]);
 
     const result = await this.transactionItemModel.aggregatePaginate(
       aggregate,
       options,
     );
+
+    if (!result || !result.docs) {
+      throw new HttpException(
+        'Terjadi kegagalan saat mengambil data jadwal pesanan',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
 
     return result;
   }

@@ -207,6 +207,10 @@ export class TransactionController {
         `[TransactionController - get schedule] ${error as string}`,
       );
 
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
+      }
+
       return responseError(
         HttpStatus.INTERNAL_SERVER_ERROR,
         'Internal server error',
