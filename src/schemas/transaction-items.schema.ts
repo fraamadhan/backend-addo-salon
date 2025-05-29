@@ -7,7 +7,7 @@ export type TransactionItemsDocument = HydratedDocument<TransactionItems>;
 
 @Schema({ timestamps: true })
 export class TransactionItems {
-  @Prop({ default: null })
+  @Prop({ default: null, index: true })
   reservationDate!: Date;
 
   @Prop({ default: 0 })

@@ -12,7 +12,7 @@ import {
 import Logger from 'src/logger';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Cart, CartDocument } from 'src/schemas/cart.schema';
-import mongoose, { Model, Types } from 'mongoose';
+import mongoose, { Model } from 'mongoose';
 import { Product, ProductDocument } from 'src/schemas/product.schema';
 import {
   ProductAssets,
@@ -69,7 +69,6 @@ export class CartService {
     this.checkIsInvalidDay(body.reservationDate);
 
     await this.checkIsNearToCloseTimeOrConflict(
-      userObjectId,
       body.reservationDate,
       body.estimation,
     );
@@ -218,7 +217,6 @@ export class CartService {
           }
 
           await this.checkIsNearToCloseTimeOrConflict(
-            userObjectId,
             item.reservationDate,
             item.estimation,
             'Terdapat item yang bentrok dengan pesanan pengguna lain. Silakan cek kembali jadwal pesanan dan ubah jadwal pesanan',
@@ -234,7 +232,9 @@ export class CartService {
               { $set: { isCheckoutLocked: true } },
               { new: true, session: session },
             )
-            .select('_id productId userId reservationDate')
+            .select(
+              '_id productId userId reservationDate price isCheckoutLocked',
+            )
             .lean()
             .exec();
 
@@ -243,6 +243,9 @@ export class CartService {
               cartId: updateCart._id,
               productId: updateCart.productId,
               reservationDate: updateCart.reservationDate,
+              note: item.note || '',
+              estimation: item.estimation,
+              price: updateCart.price,
             };
           }
 
@@ -277,7 +280,6 @@ export class CartService {
   }
 
   async checkIsNearToCloseTimeOrConflict(
-    userId: Types.ObjectId,
     reservationDate: Date,
     estimation: number,
     message: string = '',
@@ -323,9 +325,10 @@ export class CartService {
       },
       {
         $match: {
-          'transaction.userId': { $ne: userId },
           serviceStatus: ReservationStatus.SCHEDULED,
-          'transaction.status': ReservationStatus.PAID,
+          'transaction.status': {
+            $in: [ReservationStatus.PAID, ReservationStatus.SCHEDULED],
+          },
           $expr: {
             $and: [
               { $lt: ['$reservationDate', endTime] },
@@ -342,12 +345,14 @@ export class CartService {
       { $limit: 1 },
     ]);
 
+    console.log(conflict);
     if (conflict.length !== 0) {
       const conflictItem = conflict[0] as {
         reservationDate?: string | number | Date;
       };
+
       throw new HttpException(
-        `${message.length !== 0 ? message : `Jadwal pesanan anda pada bentrok dengan jadwal pesanan pada waktu ${conflictItem?.reservationDate ? new Date(conflictItem.reservationDate).toLocaleString() : ''}. Pilih jadwal lain!`}`,
+        `${message.length !== 0 ? `${message}. Jadwal Bentrok: ${conflictItem?.reservationDate ? new Date(conflictItem.reservationDate).toLocaleString() : ''}` : `Jadwal pesanan anda pada bentrok dengan jadwal pesanan pada waktu ${conflictItem?.reservationDate ? new Date(conflictItem.reservationDate).toLocaleString() : ''}. Pilih jadwal lain!`}`,
         HttpStatus.CONFLICT,
       );
     }

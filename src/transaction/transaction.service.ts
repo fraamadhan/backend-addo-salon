@@ -11,7 +11,6 @@ import mongoose, {
   AggregatePaginateModel,
   Model,
   PaginateModel,
-  Types,
 } from 'mongoose';
 import {
   Transaction,
@@ -84,9 +83,8 @@ export class TransactionService {
       await Promise.all(
         body.items.map(async (item) => {
           await this.checkIsNearToCloseTimeOrConflict(
-            item.productId,
-            userObjectId,
             item.reservationDate,
+            item.estimation,
             'Maaf pesanananmu bentrok. Silakan pilih jadwal lain',
           );
         }),
@@ -150,6 +148,18 @@ export class TransactionService {
               orderCode: orderCode,
               paymentMethod: body.paymentMethod,
               total_price: Number(response.gross_amount),
+              va_number:
+                response?.va_numbers?.[0]?.va_number ||
+                response.permata_va_number ||
+                null,
+              expiry_time_midtrans: response.expiry_time,
+              acquirer: response.acquirer ?? null,
+              url: [response?.actions?.[0]?.url, response?.actions?.[1]?.url],
+              transaction_id_midtrans: response.transaction_id ?? null,
+              payment_type_midtrans: response.payment_type ?? null,
+              transaction_status_midtrans: response.transaction_status ?? null,
+              fraud_status_midtrans: response.fraud_status ?? null,
+              transaction_time_midtrans: response.transaction_time,
             },
           },
           {
@@ -187,10 +197,12 @@ export class TransactionService {
     } catch (error) {
       this.logger.errorString(`[TransactionService - pay] ${error as string}`);
       await session.abortTransaction();
-      throw new HttpException(
-        `Pembayaran gagal diproses: ${error as string}`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      if (error instanceof Error) {
+        throw new HttpException(
+          `Pembayaran gagal diproses: ${error.message}`,
+          HttpStatus.CONFLICT,
+        );
+      }
     } finally {
       await session.endSession();
     }
@@ -227,13 +239,18 @@ export class TransactionService {
         }
       } else if (
         transactionStatus === 'cancel' ||
-        transactionStatus === 'deny' ||
-        transactionStatus === 'expire'
+        transactionStatus === 'deny'
       ) {
         await this.updateAfterHandlePayment(
           body,
           ReservationStatus.CANCELED,
           ReservationStatus.CANCELED,
+        );
+      } else if (transactionStatus === 'expire') {
+        await this.updateAfterHandlePayment(
+          body,
+          ReservationStatus.EXPIRED,
+          ReservationStatus.EXPIRED,
         );
       } else if (transactionStatus === 'pending') {
         await this.updateAfterHandlePayment(
@@ -261,7 +278,10 @@ export class TransactionService {
       await this.transactionModel
         .findOneAndUpdate(
           { _id: toObjectId(transactionId) },
-          { status: transactionStatus },
+          {
+            status: transactionStatus,
+            settlement_time_midtrans: body.settlement_time,
+          },
           { new: true, session: session },
         )
         .exec();
@@ -284,6 +304,33 @@ export class TransactionService {
     } finally {
       await session.endSession();
     }
+  }
+
+  async findConfirmPayment(userId: string, transactionId: string) {
+    const userObjectId = toObjectId(userId);
+
+    if (!userObjectId) {
+      throw new HttpException(
+        'User ID tidak valid atau tidak memiliki akses',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const data = await this.transactionModel
+      .findOne({
+        _id: transactionId,
+        userId: userObjectId,
+      })
+      .exec();
+
+    if (!data) {
+      throw new HttpException(
+        'Transaksi tidak ditemukan',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return data;
   }
 
   async getTransactionStatuMidtrans(orderId: string) {
@@ -517,7 +564,7 @@ export class TransactionService {
 
   async getSchedule(params: ScheduleQueryParams) {
     const page = params.page ?? 1;
-    const limit = params.limit ?? 10;
+    const limit = params.limit ?? 5;
     const query: Query = {
       $and: [
         {
@@ -537,6 +584,10 @@ export class TransactionService {
       [sortby]: sorttype,
     };
 
+    const reservationDate = {
+      $gte: new Date(Date.now()),
+    };
+
     if (params.reservationDate) {
       query.$and.push({
         reservationDate: new Date(params.reservationDate),
@@ -547,20 +598,13 @@ export class TransactionService {
 
     if (startDate || endDate) {
       if (startDate) {
-        query.$and.push({
-          reservationDate: {
-            $gte: startDate,
-          },
-        });
+        reservationDate['$gte'] = new Date(startDate);
       }
       if (endDate) {
-        query.$and.push({
-          reservationDate: {
-            $lte: endDate,
-          },
-        });
+        reservationDate['$lte'] = new Date(endDate);
       }
     }
+    query.$and.push({ reservationDate });
 
     const customLabels = {
       totalDocs: 'totalItem',
@@ -694,116 +738,19 @@ export class TransactionService {
       {
         $addFields: {
           estimation: {
-            $ifNull: ['$product.estimation', 0],
+            $ifNull: [{ $toInt: '$product.estimation' }, 0],
           },
-          reservationDate: '$reservationDate',
-        },
-      },
-      {
-        $facet: {
-          items: [
-            {
-              $project: {
-                _id: 1,
-                transactionId: 1,
-                reservationDate: 1,
-                estimation: 1,
-                serviceStatus: 1,
-                note: 1,
-                price: 1,
-                product: {
-                  _id: { $ifNull: ['$product._id', null] },
-                  name: {
-                    $ifNull: ['$product.name', '$transaction.serviceName'],
-                  },
-                  price: { $ifNull: ['$product.price', '$price'] },
-                  estimation: '$estimation',
-                },
-                user: {
-                  _id: '$user._id',
-                  name: '$user.name',
-                },
-                transaction: {
-                  _id: '$transaction._id',
-                  orderCode: '$transaction.orderCode',
-                  status: '$transaction.status',
-                  reservationDate: '$reservationDate',
-                },
-                employee: {
-                  _id: {
-                    $ifNull: ['$employee._id', null],
-                  },
-                  name: {
-                    $ifNull: ['$employee.name', null],
-                  },
-                },
-              },
-            },
-          ],
-          estimationsPerTransaction: [
-            {
-              $group: {
-                _id: '$transactionId',
-                totalEstimation: { $sum: '$estimation' },
-                reservationDate: { $first: '$reservationDate' },
-              },
-            },
-            {
-              $addFields: {
-                estimatedFinishDate: {
-                  $add: [
-                    '$reservationDate',
-                    { $multiply: ['$totalEstimation', 60 * 60 * 1000] },
-                  ],
-                },
-              },
-            },
-          ],
-        },
-      },
-      {
-        $project: {
-          joined: {
-            $map: {
-              input: '$items',
-              as: 'item',
-              in: {
-                $mergeObjects: [
-                  '$$item',
-                  {
-                    $let: {
-                      vars: {
-                        match: {
-                          $arrayElemAt: [
-                            {
-                              $filter: {
-                                input: '$estimationsPerTransaction',
-                                as: 'est',
-                                cond: {
-                                  $eq: ['$$est._id', '$$item.transactionId'],
-                                },
-                              },
-                            },
-                            0,
-                          ],
-                        },
-                      },
-                      in: {
-                        totalEstimationPerTransaction:
-                          '$$match.totalEstimation',
-                        estimatedFinishDatePerTransaction:
-                          '$$match.estimatedFinishDate',
-                      },
-                    },
-                  },
-                ],
-              },
-            },
+          reservationDate: {
+            $toDate: '$reservationDate',
+          },
+          estimatedFinishDate: {
+            $add: [
+              { $toDate: '$reservationDate' },
+              { $multiply: ['$product.estimation', 60 * 60 * 1000] },
+            ],
           },
         },
       },
-      { $unwind: '$joined' },
-      { $replaceRoot: { newRoot: '$joined' } },
     ]);
 
     const result = await this.transactionItemModel.aggregatePaginate(
@@ -899,16 +846,6 @@ export class TransactionService {
       const totalPrice = body.items.reduce(
         (accum, item) => accum + item.price,
         0,
-      );
-      await Promise.all(
-        body.items.map(async (item) => {
-          await this.checkIsNearToCloseTimeOrConflict(
-            item.productId,
-            userObjectId || '',
-            item.reservationDate,
-            'Maaf pesanananmu bentrok. Silakan pilih jadwal lain',
-          );
-        }),
       );
       // save to transaction table
       const transaction = await this.transactionModel
@@ -1009,86 +946,78 @@ export class TransactionService {
   }
 
   async checkIsNearToCloseTimeOrConflict(
-    productId: Types.ObjectId,
-    userId: Types.ObjectId,
     reservationDate: Date,
+    estimation: number,
     message: string = '',
   ) {
-    const product = await this.productModel
-      .findOne({
-        _id: productId,
-      })
-      .select('estimation')
-      .lean()
-      .exec();
+    const allowedOverlap = Number(process.env.ONE_HOUR);
+    const durationMs = estimation * Number(process.env.ONE_HOUR); //customer can overlap one hour before the previous order done
 
-    if (product && typeof product.estimation === 'number') {
-      const allowedOverlap = Number(process.env.ONE_HOUR);
-      const durationMs = product.estimation * Number(process.env.ONE_HOUR); //customer can overlap one hour before the previous order done
+    const startTime = new Date(reservationDate);
+    const endTime = new Date(startTime.getTime() + durationMs);
 
-      const startTime = new Date(reservationDate);
-      const endTime = new Date(startTime.getTime() + durationMs);
+    const closingTime = new Date(startTime);
+    const openingTime = new Date(startTime);
+    closingTime.setUTCHours(11, 0, 0, 0);
+    openingTime.setUTCHours(0, 0, 0, 0);
 
-      const closingTime = new Date(startTime);
-      const openingTime = new Date(startTime);
-      closingTime.setUTCHours(11, 0, 0, 0);
-      openingTime.setUTCHours(0, 0, 0, 0);
+    if (startTime.getDay() === 1) {
+      throw new HttpException(
+        'Hari senin salon libur. Silakan pilih jadwal lain!',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
 
-      if (startTime.getDay() === 1) {
-        throw new HttpException(
-          'Hari senin salon libur. Silakan pilih jadwal lain!',
-          HttpStatus.UNPROCESSABLE_ENTITY,
-        );
-      }
+    if (endTime > closingTime || startTime < openingTime) {
+      throw new HttpException(
+        'Jadwal pesanan melebihi jam tutup salon atau salon belum buka. Pilih jadwal lain',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
 
-      if (endTime > closingTime || startTime < openingTime) {
-        throw new HttpException(
-          'Jadwal pesanan melebihi jam tutup salon atau salon belum buka. Pilih jadwal lain',
-          HttpStatus.UNPROCESSABLE_ENTITY,
-        );
-      }
-
-      // The data checking must from transaction table with status "paid" and do check when user try to checkout
-      // is the reservation conflict
-      const conflict = await this.transactionItemModel.aggregate([
-        {
-          $lookup: {
-            from: 'transactions',
-            localField: 'transactionId',
-            foreignField: '_id',
-            as: 'transaction',
+    // The data checking must from transaction table with status "paid" and do check when user try to checkout
+    // is the reservation conflict
+    const conflict = await this.transactionItemModel.aggregate([
+      {
+        $lookup: {
+          from: 'transactions',
+          localField: 'transactionId',
+          foreignField: '_id',
+          as: 'transaction',
+        },
+      },
+      {
+        $unwind: '$transaction',
+      },
+      {
+        $match: {
+          serviceStatus: ReservationStatus.SCHEDULED,
+          'transaction.status': {
+            $in: [ReservationStatus.PAID, ReservationStatus.SCHEDULED],
+          },
+          $expr: {
+            $and: [
+              { $lt: ['$reservationDate', endTime] },
+              {
+                $gt: [
+                  { $add: ['$reservationDate', durationMs] },
+                  new Date(startTime.getTime() + allowedOverlap),
+                ],
+              },
+            ],
           },
         },
-        {
-          $unwind: '$transaction',
-        },
-        {
-          $match: {
-            'transaction.userId': { $ne: userId },
-            serviceStatus: ReservationStatus.SCHEDULED,
-            'transaction.status': ReservationStatus.PAID,
-            $expr: {
-              $and: [
-                { $lt: ['$reservationDate', endTime] },
-                {
-                  $gt: [
-                    { $add: ['$reservationDate', durationMs] },
-                    new Date(startTime.getTime() + allowedOverlap),
-                  ],
-                },
-              ],
-            },
-          },
-        },
-        { $limit: 1 },
-      ]);
+      },
+      { $limit: 1 },
+    ]);
 
-      if (conflict.length !== 0) {
-        throw new HttpException(
-          `${message.length !== 0 ? message : 'Jadwal pesanan bentrok  dengan pesanan lain. Pilih jadwal lain!'}`,
-          HttpStatus.CONFLICT,
-        );
-      }
+    if (conflict.length !== 0) {
+      const conflictItem = conflict[0] as {
+        reservationDate?: string | number | Date;
+      };
+      throw new Error(
+        `${message.length !== 0 ? `${message}. Jadwal Bentrok: ${conflictItem?.reservationDate ? new Date(conflictItem.reservationDate).toLocaleString() : ''}` : `Jadwal pesanan anda pada bentrok dengan jadwal pesanan pada waktu ${conflictItem?.reservationDate ? new Date(conflictItem.reservationDate).toLocaleString() : ''}. Pilih jadwal lain!`}`,
+      );
     }
   }
 }

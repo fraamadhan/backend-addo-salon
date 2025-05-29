@@ -7,6 +7,7 @@ import {
   IsMongoId,
   IsNotEmpty,
   IsNumber,
+  IsOptional,
   IsString,
   ValidateNested,
 } from 'class-validator';
@@ -53,4 +54,8 @@ export class CartItem {
   @IsNumber()
   @IsNotEmpty()
   estimation!: number;
+
+  @IsString()
+  @IsOptional()
+  note?: string;
 }

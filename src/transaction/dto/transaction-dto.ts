@@ -56,6 +56,10 @@ class ChargeItemDto {
   @IsDate()
   @IsNotEmpty()
   reservationDate!: Date;
+
+  @IsNumber()
+  @IsNotEmpty()
+  estimation!: number;
 }
 
 export class UpdateTransactionDto {}
@@ -63,7 +67,8 @@ export class UpdateTransactionDto {}
 export class CalculateBillDto {
   @IsMongoId()
   @IsNotEmpty()
-  transactionId!: Types.ObjectId;
+  @Type(() => Types.ObjectId)
+  transactionId!: string;
 
   @IsString()
   @IsNotEmpty()

@@ -158,7 +158,34 @@ export class UsersService {
       }
 
       if (body.password) {
+        if (!body.oldPassword) {
+          throw new HttpException(
+            'Kata sandi lama harus diisi',
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+        const existingUser = await this.userModel.findById(id).exec();
+
+        if (!existingUser) {
+          throw new HttpException(
+            'Pengguna tidak ditemukan',
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+
         const hashedPassword = await bcrypt.hash(body.password, 10);
+        const isMatch = await bcrypt.compare(
+          body.oldPassword,
+          existingUser.password,
+        );
+
+        if (!isMatch) {
+          throw new HttpException(
+            'Kata sandi lama salah',
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+
         body.password = hashedPassword;
       }
 

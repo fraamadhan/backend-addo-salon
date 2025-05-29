@@ -218,6 +218,35 @@ export class TransactionController {
     }
   }
 
+  @Get('/payment/confirm/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN, RoleType.USER)
+  async findConfirmPayment(
+    @Req() req: Request,
+    @Param('id') transactionId: string,
+  ) {
+    const userId = (req.user as UserPayload)._id;
+    try {
+      const data = await this.transactionService.findConfirmPayment(
+        userId,
+        transactionId,
+      );
+
+      return responseSuccess(HttpStatus.OK, 'Success', data);
+    } catch (error) {
+      this.logger.errorString(
+        `[TransactionController - get confirm payment] ${error as string}`,
+      );
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
+      }
+      return responseError(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        'Internal server error',
+      );
+    }
+  }
+
   @Get('/order/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleType.ADMIN, RoleType.USER)

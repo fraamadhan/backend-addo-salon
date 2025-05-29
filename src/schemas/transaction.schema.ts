@@ -33,6 +33,36 @@ export class Transaction {
 
   @Prop({ default: null, maxlength: 100 })
   serviceName?: string;
+
+  @Prop({ default: null })
+  transaction_id_midtrans?: string;
+
+  @Prop({ default: null })
+  transaction_status_midtrans?: string;
+
+  @Prop({ default: null })
+  fraud_status_midtrans?: string;
+
+  @Prop({ default: null })
+  payment_type_midtrans?: string;
+
+  @Prop({ default: null })
+  transaction_time_midtrans?: string;
+
+  @Prop({ default: null })
+  expiry_time_midtrans?: string;
+
+  @Prop({ default: null })
+  va_number?: string;
+
+  @Prop({ default: null })
+  url?: string[];
+
+  @Prop({ default: null })
+  acquirer?: string;
+
+  @Prop({ default: null })
+  settlement_time_midtrans?: string;
 }
 
 export const TransactionSchema = SchemaFactory.createForClass(Transaction);

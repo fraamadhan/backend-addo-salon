@@ -11,6 +11,7 @@ import {
   HttpStatus,
   UseInterceptors,
   Query,
+  HttpException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import Logger from 'src/logger';
@@ -39,8 +40,8 @@ export class UsersController {
       return responseSuccess(HttpStatus.OK, 'User fetched successfully', data);
     } catch (error: any) {
       this.logger.errorString(error as string);
-      if (error.response && error.status) {
-        return responseError(error.status, error.response);
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
       }
       return responseError(
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -58,8 +59,8 @@ export class UsersController {
       return responseSuccess(HttpStatus.OK, 'User fetched successfully', data);
     } catch (error: any) {
       this.logger.errorString(error as string);
-      if (error.response && error.status) {
-        return responseError(error.status, error.response);
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
       }
       return responseError(
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -70,7 +71,7 @@ export class UsersController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleType.ADMIN)
+  @Roles(RoleType.ADMIN, RoleType.USER)
   @UseInterceptors(FileInterceptor('file'))
   async update(
     @Param('id') id: string,
@@ -78,7 +79,7 @@ export class UsersController {
     @UploadedFile(
       new ParseFilePipeBuilder()
         .addFileTypeValidator({
-          fileType: /image\/(jpeg|png)$/,
+          fileType: /image\/(jpeg|jpg|png)$/,
         })
         .addMaxSizeValidator({
           maxSize: 5_000_000,
@@ -96,8 +97,8 @@ export class UsersController {
       return responseSuccess(HttpStatus.OK, 'User updated successfully', data);
     } catch (error: any) {
       this.logger.errorString(error as string);
-      if (error.response && error.status) {
-        return responseError(error.status, error.response);
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
       }
       return responseError(
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -118,8 +119,8 @@ export class UsersController {
       });
     } catch (error: any) {
       this.logger.errorString(error as string);
-      if (error.response && error.status) {
-        return responseError(error.status, error.response);
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
       }
       return responseError(
         HttpStatus.INTERNAL_SERVER_ERROR,
