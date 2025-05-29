@@ -6,6 +6,8 @@ import {
   IsDate,
   IsMongoId,
   IsNotEmpty,
+  IsNumber,
+  IsOptional,
   IsString,
   ValidateNested,
 } from 'class-validator';
@@ -20,6 +22,10 @@ export class CreateCartDto {
   @IsDate()
   @IsNotEmpty()
   reservationDate!: Date;
+
+  @IsNumber()
+  @IsNotEmpty()
+  estimation!: number;
 }
 
 export class UpdateCartDto extends PartialType(CreateCartDto) {}
@@ -44,4 +50,12 @@ export class CartItem {
   @IsDate()
   @IsNotEmpty()
   reservationDate!: Date;
+
+  @IsNumber()
+  @IsNotEmpty()
+  estimation!: number;
+
+  @IsString()
+  @IsOptional()
+  note?: string;
 }

@@ -20,7 +20,7 @@ export class AppController {
   constructor(private readonly appService: AppService) {}
 
   @Get()
-  async findAll(): Promise<User[]> {
+  findAll() {
     return this.appService.findAll();
   }
 

@@ -12,7 +12,7 @@ import {
 import Logger from 'src/logger';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Cart, CartDocument } from 'src/schemas/cart.schema';
-import mongoose, { Model, Types } from 'mongoose';
+import mongoose, { Model } from 'mongoose';
 import { Product, ProductDocument } from 'src/schemas/product.schema';
 import {
   ProductAssets,
@@ -69,9 +69,8 @@ export class CartService {
     this.checkIsInvalidDay(body.reservationDate);
 
     await this.checkIsNearToCloseTimeOrConflict(
-      productObjectId,
-      userObjectId,
       body.reservationDate,
+      body.estimation,
     );
 
     const product = await this.productModel
@@ -101,11 +100,12 @@ export class CartService {
         .find({
           userId: userObjectId,
         })
+        .populate('productId', 'estimation name')
         .sort({ createdAt: -1 })
         .lean()
         .exec();
 
-      const productIds = result.map((value) => value.productId);
+      const productIds = result.map((value) => value.productId._id);
 
       const productAssets = await this.productAssetModel
         .find({
@@ -116,15 +116,20 @@ export class CartService {
 
       const assetMap = new Map(
         productAssets.map((asset) => [
-          asset.productId.toString(),
+          asset.productId._id.toString(),
           asset.publicUrl,
         ]),
       );
 
-      const data = result.map((value) => ({
-        ...value,
-        assetRef: assetMap.get(value.productId.toString()) || null,
-      }));
+      const data = result.map((value) => {
+        const { productId: product, ...rest } = value;
+
+        return {
+          ...rest,
+          product,
+          assetRef: assetMap.get(value.productId._id.toString()) || null,
+        };
+      });
 
       return data;
     } catch (error: any) {
@@ -212,9 +217,8 @@ export class CartService {
           }
 
           await this.checkIsNearToCloseTimeOrConflict(
-            productObjectId,
-            userObjectId,
             item.reservationDate,
+            item.estimation,
             'Terdapat item yang bentrok dengan pesanan pengguna lain. Silakan cek kembali jadwal pesanan dan ubah jadwal pesanan',
           );
 
@@ -228,7 +232,9 @@ export class CartService {
               { $set: { isCheckoutLocked: true } },
               { new: true, session: session },
             )
-            .select('_id productId userId reservationDate')
+            .select(
+              '_id productId userId reservationDate price isCheckoutLocked',
+            )
             .lean()
             .exec();
 
@@ -237,6 +243,9 @@ export class CartService {
               cartId: updateCart._id,
               productId: updateCart.productId,
               reservationDate: updateCart.reservationDate,
+              note: item.note || '',
+              estimation: item.estimation,
+              price: updateCart.price,
             };
           }
 
@@ -271,86 +280,81 @@ export class CartService {
   }
 
   async checkIsNearToCloseTimeOrConflict(
-    productId: Types.ObjectId,
-    userId: Types.ObjectId,
     reservationDate: Date,
+    estimation: number,
     message: string = '',
   ) {
-    const product = await this.productModel
-      .findOne({
-        _id: productId,
-      })
-      .select('estimation')
-      .lean()
-      .exec();
+    const allowedOverlap = Number(process.env.ONE_HOUR);
+    const durationMs = estimation * Number(process.env.ONE_HOUR); //customer can overlap one hour before the previous order done
 
-    if (product && typeof product.estimation === 'number') {
-      const allowedOverlap = Number(process.env.ONE_HOUR);
-      const durationMs = product.estimation * Number(process.env.ONE_HOUR); //customer can overlap one hour before the previous order done
+    const startTime = new Date(reservationDate);
+    const endTime = new Date(startTime.getTime() + durationMs);
 
-      const startTime = new Date(reservationDate);
-      const endTime = new Date(startTime.getTime() + durationMs);
+    const closingTime = new Date(startTime);
+    const openingTime = new Date(startTime);
+    closingTime.setUTCHours(11, 0, 0, 0);
+    openingTime.setUTCHours(0, 0, 0, 0);
 
-      const closingTime = new Date(startTime);
-      const openingTime = new Date(startTime);
-      closingTime.setUTCHours(11, 0, 0, 0);
-      openingTime.setUTCHours(0, 0, 0, 0);
+    if (startTime.getDay() === 1) {
+      throw new HttpException(
+        'Hari senin salon libur. Silakan pilih jadwal lain!',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
 
-      if (startTime.getDay() === 1) {
-        throw new HttpException(
-          'Hari senin salon libur. Silakan pilih jadwal lain!',
-          HttpStatus.UNPROCESSABLE_ENTITY,
-        );
-      }
+    if (endTime > closingTime || startTime < openingTime) {
+      throw new HttpException(
+        'Jadwal pesanan melebihi jam tutup salon atau salon belum buka. Pilih jadwal lain',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
 
-      if (endTime > closingTime || startTime < openingTime) {
-        throw new HttpException(
-          'Jadwal pesanan melebihi jam tutup salon atau salon belum buka. Pilih jadwal lain',
-          HttpStatus.UNPROCESSABLE_ENTITY,
-        );
-      }
-
-      // The data checking must from transaction table with status "paid" and do check when user try to checkout
-      // is the reservation conflict
-      const conflict = await this.transactionItemModel.aggregate([
-        {
-          $lookup: {
-            from: 'transactions',
-            localField: 'transactionId',
-            foreignField: '_id',
-            as: 'transaction',
+    // The data checking must from transaction table with status "paid" and do check when user try to checkout
+    // is the reservation conflict
+    const conflict = await this.transactionItemModel.aggregate([
+      {
+        $lookup: {
+          from: 'transactions',
+          localField: 'transactionId',
+          foreignField: '_id',
+          as: 'transaction',
+        },
+      },
+      {
+        $unwind: '$transaction',
+      },
+      {
+        $match: {
+          serviceStatus: ReservationStatus.SCHEDULED,
+          'transaction.status': {
+            $in: [ReservationStatus.PAID, ReservationStatus.SCHEDULED],
+          },
+          $expr: {
+            $and: [
+              { $lt: ['$reservationDate', endTime] },
+              {
+                $gt: [
+                  { $add: ['$reservationDate', durationMs] },
+                  new Date(startTime.getTime() + allowedOverlap),
+                ],
+              },
+            ],
           },
         },
-        {
-          $unwind: '$transaction',
-        },
-        {
-          $match: {
-            'transaction.userId': { $ne: userId },
-            serviceStatus: ReservationStatus.SCHEDULED,
-            'transaction.status': ReservationStatus.PAID,
-            $expr: {
-              $and: [
-                { $lt: ['$reservationDate', endTime] },
-                {
-                  $gt: [
-                    { $add: ['$reservationDate', durationMs] },
-                    new Date(startTime.getTime() + allowedOverlap),
-                  ],
-                },
-              ],
-            },
-          },
-        },
-        { $limit: 1 },
-      ]);
+      },
+      { $limit: 1 },
+    ]);
 
-      if (conflict.length !== 0) {
-        throw new HttpException(
-          `${message.length !== 0 ? message : 'Jadwal pesanan bentrok  dengan pesanan lain. Pilih jadwal lain!'}`,
-          HttpStatus.CONFLICT,
-        );
-      }
+    console.log(conflict);
+    if (conflict.length !== 0) {
+      const conflictItem = conflict[0] as {
+        reservationDate?: string | number | Date;
+      };
+
+      throw new HttpException(
+        `${message.length !== 0 ? `${message}. Jadwal Bentrok: ${conflictItem?.reservationDate ? new Date(conflictItem.reservationDate).toLocaleString() : ''}` : `Jadwal pesanan anda pada bentrok dengan jadwal pesanan pada waktu ${conflictItem?.reservationDate ? new Date(conflictItem.reservationDate).toLocaleString() : ''}. Pilih jadwal lain!`}`,
+        HttpStatus.CONFLICT,
+      );
     }
   }
 }

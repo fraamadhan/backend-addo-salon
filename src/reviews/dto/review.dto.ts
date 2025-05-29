@@ -41,7 +41,7 @@ export class ParamsReviewDto extends PaginationParams {
   @Type(() => Number)
   @IsNumber()
   rating?: number;
-  g;
+
   @IsMongoId()
   @IsOptional()
   productId!: Types.ObjectId;

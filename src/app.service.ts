@@ -34,8 +34,8 @@ export class AppService {
 
   private readonly logger = new Logger();
 
-  async findAll(): Promise<User[]> {
-    return await this.userModel.find().exec();
+  findAll() {
+    return 'Hello world';
   }
 
   async create(body: CreateUserDto, file: Express.Multer.File): Promise<User> {

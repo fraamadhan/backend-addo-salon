@@ -116,6 +116,7 @@ export class CmsTransactionService {
           ReservationStatus.CART,
           ReservationStatus.PENDING,
           ReservationStatus.COMPLETED,
+          ReservationStatus.CANCELED,
         ],
       },
     };
@@ -690,7 +691,9 @@ export class CmsTransactionService {
           $match: {
             'transaction.userId': { $ne: userId },
             serviceStatus: ReservationStatus.SCHEDULED,
-            'transaction.status': ReservationStatus.PAID,
+            'transaction.status': {
+              $in: [ReservationStatus.PAID, ReservationStatus.SCHEDULED],
+            },
             $expr: {
               $and: [
                 { $lt: ['$reservationDate', endTime] },
