@@ -38,7 +38,6 @@ import { MidtransChargeResponseType } from './midtrans/dto/response';
 import { Cart, CartDocument } from 'src/schemas/cart.schema';
 import { Query } from 'src/types/general';
 import { SortType } from 'src/types/sorttype';
-import { sanitizeKeyword } from 'src/utils/sanitize-keyword';
 import { ScheduleQueryParams } from 'src/types/transaction';
 
 @Injectable()
@@ -437,9 +436,8 @@ export class TransactionService {
     userId: string,
   ) {
     const page = params.page ?? 1;
-    const limit = params.limit ?? 15;
-    const keyword = params.keyword;
-    let keywordSanitized = '';
+    const limit = params.limit ?? 7;
+    const keyword = params.keyword ?? '';
     const userObjectId = toObjectId(userId);
     if (!userObjectId) {
       throw new HttpException(
@@ -464,8 +462,8 @@ export class TransactionService {
           $in: [
             ReservationStatus.PAID,
             ReservationStatus.UNPAID,
+            ReservationStatus.EXPIRED,
             ReservationStatus.SCHEDULED,
-            ReservationStatus.IN_PROGRESS,
           ],
         },
       });
@@ -477,28 +475,21 @@ export class TransactionService {
             ReservationStatus.PENDING,
             ReservationStatus.UNPAID,
             ReservationStatus.PAID,
-            ReservationStatus.IN_PROGRESS,
           ],
         },
       });
     }
 
-    if (keyword) {
-      const result = sanitizeKeyword(keyword);
-
-      keywordSanitized = result.keywordSanitized;
-    }
-
-    if (keywordSanitized.length !== 0) {
+    if (keyword?.length !== 0) {
       query.$and.push({
         orderCode: {
-          $regex: new RegExp(`${keywordSanitized}`, 'i'),
+          $regex: new RegExp(`${keyword}`, 'i'),
         },
       });
     }
 
     if (params.paymentStatus) {
-      query.$and[0] = {
+      query.$and[1] = {
         status: params.paymentStatus,
       };
     }
@@ -520,13 +511,32 @@ export class TransactionService {
       .populate('productId')
       .lean();
 
+    const productIds = items.map((item) => item?.productId?._id);
+
+    const productAssets = await this.productAssetModel
+      .find({
+        productId: { $in: productIds },
+      })
+      .lean()
+      .exec();
+
+    const assetMap = new Map(
+      productAssets.map((asset) => [
+        asset.productId._id.toString(),
+        asset.publicUrl,
+      ]),
+    );
+
     const groupedItems = items.reduce(
       (acc, item) => {
         const tid = item.transactionId.toString();
         if (!acc[tid]) acc[tid] = [];
         acc[tid].push({
           ...item,
-          product: item.productId,
+          product: {
+            ...item.productId,
+            assetRef: assetMap.get(item.productId._id.toString()) || null,
+          },
         });
         return acc;
       },
@@ -564,7 +574,7 @@ export class TransactionService {
 
   async getSchedule(params: ScheduleQueryParams) {
     const page = params.page ?? 1;
-    const limit = params.limit ?? 5;
+    const limit = params.limit ?? 4;
     const query: Query = {
       $and: [
         {
@@ -784,6 +794,7 @@ export class TransactionService {
         transactionId: transactionObjectId,
       })
       .populate('productId')
+      .populate('employeeId')
       .lean()
       .exec();
 
@@ -943,6 +954,148 @@ export class TransactionService {
     data.grandTotalPrice += transaction.total_price + data.transactionFee;
 
     return data;
+  }
+
+  async findUnreviewedItem(userId: string, params: PaymentPaginationParams) {
+    const page = params.page ?? 1;
+    const limit = params.limit ?? 1;
+    const query: Query = {
+      $and: [
+        {
+          serviceStatus: ReservationStatus.COMPLETED,
+          isReviewed: false,
+          'transaction.userId': toObjectId(userId),
+          'transaction.status': ReservationStatus.COMPLETED,
+        },
+      ],
+    };
+
+    const sorttype = params.sorttype === SortType.asc ? 1 : -1;
+    const sortby = params.sortby ?? 'createdAt';
+
+    const sort: Record<string, any> = {
+      [sortby]: sorttype,
+    };
+
+    const customLabels = {
+      totalDocs: 'totalItem',
+      limit: 'limit',
+      page: 'currentPage',
+      nextPage: 'nextPage',
+      prevPage: 'prevPage',
+      totalPages: 'pageCount',
+      hasPrevPage: 'hasPrevPage',
+      hasNextPage: 'hasNextPage',
+      pagingCounter: 'pageCounter',
+      meta: 'paginator',
+    };
+
+    const options = {
+      page,
+      limit,
+      customLabels,
+    };
+
+    const aggregate = this.transactionItemModel.aggregate([
+      {
+        $lookup: {
+          from: 'transactions',
+          foreignField: '_id',
+          localField: 'transactionId',
+          as: 'transaction',
+        },
+      },
+      {
+        $unwind: {
+          path: '$transaction',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: 'products',
+          foreignField: '_id',
+          localField: 'productId',
+          as: 'product',
+        },
+      },
+      {
+        $unwind: {
+          path: '$product',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: 'productassets',
+          foreignField: 'productId',
+          localField: 'product._id',
+          as: 'productassets',
+        },
+      },
+      {
+        $unwind: {
+          path: '$productassets',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $match: {
+          ...query,
+        },
+      },
+      {
+        $sort: sort,
+      },
+      {
+        $project: {
+          _id: 1,
+          transactionId: 1,
+          serviceStatus: 1,
+          reservationDate: 1,
+          note: 1,
+          price: 1,
+          isReviewed: 1,
+          product: {
+            _id: {
+              $ifNull: ['$product._id', null],
+            },
+            name: {
+              $ifNull: ['$product.name', '$transaction.serviceName'],
+            },
+            price: {
+              $ifNull: ['$product.price', '$price'],
+            },
+            estimation: {
+              $ifNull: ['$product.estimation', 0],
+            },
+            assetRef: {
+              $ifNull: ['$productassets.publicUrl', null],
+            },
+          },
+          transaction: {
+            _id: '$transaction._id',
+            orderCode: '$transaction.orderCode',
+            status: '$transaction.status',
+            total_price: '$transaction.total_price',
+          },
+        },
+      },
+    ]);
+
+    const result = await this.transactionItemModel.aggregatePaginate(
+      aggregate,
+      options,
+    );
+
+    if (!result || !result.docs) {
+      throw new HttpException(
+        'Terjadi kegagalan saat mengambil data jadwal pesanan',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+
+    return result;
   }
 
   async checkIsNearToCloseTimeOrConflict(

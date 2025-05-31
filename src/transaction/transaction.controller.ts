@@ -257,7 +257,33 @@ export class TransactionController {
       return responseSuccess(HttpStatus.OK, 'Success', data);
     } catch (error) {
       this.logger.errorString(
-        `[TransactionController - get payments] ${error as string}`,
+        `[TransactionController - get order by id] ${error as string}`,
+      );
+      return responseError(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        'Internal server error',
+      );
+    }
+  }
+
+  @Get('/unreviewed-item')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN, RoleType.USER)
+  async findUnreviewedItem(
+    @Req() req: Request,
+    @Query() params: PaymentPaginationParams,
+  ) {
+    const userId = (req.user as UserPayload)._id;
+    try {
+      const data = await this.transactionService.findUnreviewedItem(
+        userId,
+        params,
+      );
+
+      return responseSuccess(HttpStatus.OK, 'Success', data);
+    } catch (error) {
+      this.logger.errorString(
+        `[TransactionController - get unreviewed item] ${error as string}`,
       );
       return responseError(
         HttpStatus.INTERNAL_SERVER_ERROR,

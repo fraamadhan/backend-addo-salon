@@ -23,15 +23,11 @@ export class CreateReviewDto {
 
   @IsMongoId()
   @IsNotEmpty()
-  userId!: Types.ObjectId;
-
-  @IsMongoId()
-  @IsNotEmpty()
   productId!: Types.ObjectId;
 
   @IsMongoId()
   @IsNotEmpty()
-  transactionId!: Types.ObjectId;
+  itemId!: Types.ObjectId;
 }
 
 export class UpdateReviewDto extends PartialType(CreateReviewDto) {}

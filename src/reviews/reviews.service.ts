@@ -1,12 +1,12 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateReviewDto, ParamsReviewDto } from './dto/review.dto';
-import { InjectModel } from '@nestjs/mongoose';
+import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import {
   ProductReview,
   ProductReviewDocument,
 } from 'src/schemas/product-review.schema';
 import { Product, ProductDocument } from 'src/schemas/product.schema';
-import mongoose, { Model, PaginateModel, Types } from 'mongoose';
+import mongoose, { Model, PaginateModel } from 'mongoose';
 import Logger from 'src/logger';
 import { User, UserDocument } from 'src/schemas/user.schema';
 import { UserAssets, UserAssetsDocument } from 'src/schemas/user-assets.schema';
@@ -29,12 +29,13 @@ export class ReviewsService {
     private readonly userAssetsModel: Model<UserAssetsDocument>,
     @InjectModel(TransactionItems.name)
     private readonly transactionItemModel: Model<TransactionItemsDocument>,
+    @InjectConnection() private readonly connection: mongoose.Connection,
   ) {}
 
   private readonly logger = new Logger();
 
-  async create(body: CreateReviewDto) {
-    const existingUser = await this.userModel.findById(body.userId).exec();
+  async create(body: CreateReviewDto, userId: string) {
+    const existingUser = await this.userModel.findById(userId).exec();
 
     if (!existingUser) {
       throw new HttpException(
@@ -43,57 +44,85 @@ export class ReviewsService {
       );
     }
 
-    if (body.productId || body.userId) {
-      body.productId = new Types.ObjectId(body.productId);
-      body.userId = new Types.ObjectId(body.userId);
+    const productObjectId = toObjectId(body.productId);
+    const itemObjectId = toObjectId(body.itemId);
+
+    if (!productObjectId || !itemObjectId) {
+      throw new HttpException(
+        'Invalid productId or itemId',
+        HttpStatus.BAD_REQUEST,
+      );
     }
+    body.productId = productObjectId;
+    body.itemId = itemObjectId;
+    body['userId'] = toObjectId(userId);
 
     // insert the data in product table review
-    const data = await this.productReviewModel.create(body);
-    if (data) {
+    const session = await this.connection.startSession();
+    session.startTransaction();
+    try {
+      const [data] = await this.productReviewModel.create([body], {
+        session,
+      });
       this.logger.log('[Review Service] - create review success');
-
-      const product = await this.productModel
-        .findById(body.productId)
-        .select('ratingAverage ratingCount')
-        .lean()
-        .exec();
-
-      if (product) {
-        const oldAverage = product.ratingAverage || 0;
-        const oldCount = product.ratingCount || 0;
-        const newRatingCount = oldCount + 1;
-        const newRatingAverage =
-          ((oldAverage * oldCount + body.rating) * 1.0) / newRatingCount;
-
-        await this.productModel
-          .findOneAndUpdate(
-            {
-              _id: body.productId,
-            },
-            {
-              ratingAverage: newRatingAverage,
-              ratingCount: newRatingCount,
-            },
-          )
+      if (data) {
+        const product = await this.productModel
+          .findById(productObjectId)
+          .select('ratingAverage ratingCount')
+          .lean()
+          .session(session)
           .exec();
-      }
 
-      // UPDATE IS_REVIEWED IN TRANSACTION SCHEMA
-      const transactionItem = await this.transactionItemModel
-        .findOne({
-          productId: new mongoose.Types.ObjectId(body.productId),
-          transactionId: new mongoose.Types.ObjectId(body.transactionId),
-        })
-        .exec();
+        if (product) {
+          const oldAverage = product.ratingAverage || 0;
+          const oldCount = product.ratingCount || 0;
+          const newRatingCount = oldCount + 1;
+          const newRatingAverage =
+            ((oldAverage * oldCount + body.rating) * 1.0) / newRatingCount;
 
-      if (transactionItem) {
-        transactionItem.isReviewed = true;
-        await transactionItem.save();
+          await this.productModel
+            .findOneAndUpdate(
+              {
+                _id: productObjectId,
+              },
+              {
+                ratingAverage: newRatingAverage,
+                ratingCount: newRatingCount,
+              },
+              {
+                session,
+              },
+            )
+            .exec();
+        }
+
+        // UPDATE IS_REVIEWED IN TRANSACTION SCHEMA
+        const transactionItem = await this.transactionItemModel
+          .findOne({
+            _id: body.itemId,
+            productId: productObjectId,
+          })
+          .session(session)
+          .exec();
+
+        if (transactionItem) {
+          transactionItem.isReviewed = true;
+          await transactionItem.save({ session });
+        }
+
+        await session.commitTransaction();
+
+        return data;
       }
+    } catch (error) {
+      this.logger.error(
+        `[ReviewService - create] - ${error instanceof Error ? error.message : JSON.stringify(error)}`,
+      );
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
     }
-
-    return data;
   }
 
   async findAll(params: ParamsReviewDto) {
@@ -129,6 +158,7 @@ export class ReviewsService {
             $gte: params.rating,
           },
         })
+        .sort({ createdAt: -1 })
         .limit(9)
         .populate('productId', '_id name ratingAverage')
         .populate('userId', '_id name')

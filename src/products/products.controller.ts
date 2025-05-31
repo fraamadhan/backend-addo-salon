@@ -12,6 +12,7 @@ import {
   HttpStatus,
   Query,
   UseGuards,
+  HttpException,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { ProductDto, UpdateProductDto } from './dto/product.dto';
@@ -39,7 +40,7 @@ export class ProductsController {
     @UploadedFile(
       new ParseFilePipeBuilder()
         .addFileTypeValidator({
-          fileType: /image\/(jpeg|png)$/,
+          fileType: /image\/(jpeg|png|webp)$/,
         })
         .addMaxSizeValidator({
           maxSize: 5_000_000,
@@ -61,8 +62,8 @@ export class ProductsController {
       );
     } catch (error: any) {
       this.logger.error(`[PRODUCT - create] ${error}`);
-      if (error.response && error.status) {
-        return responseError(error.status, error.response);
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
       }
       return responseError(
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -83,8 +84,8 @@ export class ProductsController {
       );
     } catch (error: any) {
       this.logger.errorString(error as string);
-      if (error.response && error.status) {
-        return responseError(error.status, error.response);
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
       }
       return responseError(
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -105,8 +106,8 @@ export class ProductsController {
       );
     } catch (error: any) {
       this.logger.error(`[PRODUCT - create] ${error}`);
-      if (error.response && error.status) {
-        return responseError(error.status, error.response);
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
       }
       return responseError(
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -125,7 +126,7 @@ export class ProductsController {
     @UploadedFile(
       new ParseFilePipeBuilder()
         .addFileTypeValidator({
-          fileType: /image\/(jpeg|png)$/,
+          fileType: /image\/(jpeg|png|webp)$/,
         })
         .addMaxSizeValidator({
           maxSize: 5_000_000,
@@ -147,8 +148,8 @@ export class ProductsController {
       );
     } catch (error: any) {
       this.logger.error(`[PRODUCT - update] ${error}`);
-      if (error.response && error.status) {
-        return responseError(error.status, error.response);
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
       }
       return responseError(
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -169,8 +170,8 @@ export class ProductsController {
       });
     } catch (error: any) {
       this.logger.error(`[PRODUCT - delete] ${error}`);
-      if (error.response && error.status) {
-        return responseError(error.status, error.response);
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
       }
       return responseError(
         HttpStatus.INTERNAL_SERVER_ERROR,
