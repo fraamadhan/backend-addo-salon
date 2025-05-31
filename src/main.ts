@@ -48,5 +48,3 @@ bootstrap().catch((err) => {
   console.error('Error starting the application:', err);
   process.exit(1);
 });
-
-//create product log and user log for logging

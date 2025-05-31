@@ -7,6 +7,8 @@ import {
   HttpStatus,
   UseGuards,
   Query,
+  HttpException,
+  Req,
 } from '@nestjs/common';
 import { ReviewsService } from './reviews.service';
 import { CreateReviewDto, ParamsReviewDto } from './dto/review.dto';
@@ -16,6 +18,8 @@ import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { Roles } from 'src/utils/custom-decorator/roles.decorator';
 import { RoleType } from 'src/types/role';
+import { Request } from 'express';
+import { UserPayload } from 'src/types/general';
 
 @Controller('reviews')
 export class ReviewsController {
@@ -26,9 +30,10 @@ export class ReviewsController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleType.ADMIN, RoleType.USER)
-  async create(@Body() body: CreateReviewDto) {
+  async create(@Req() req: Request, @Body() body: CreateReviewDto) {
+    const userId = (req.user as UserPayload)._id;
     try {
-      const data = await this.reviewsService.create(body);
+      const data = await this.reviewsService.create(body, userId);
 
       return responseSuccess(
         HttpStatus.CREATED,
@@ -37,8 +42,8 @@ export class ReviewsController {
       );
     } catch (error: any) {
       this.logger.error(`[REVIEW - create] ${error}`);
-      if (error.response && error.status) {
-        return responseError(error.status as number, error.response as string);
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
       }
       return responseError(
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -55,8 +60,8 @@ export class ReviewsController {
       return responseSuccess(HttpStatus.OK, 'Ulasan berhasil ditemukan', data);
     } catch (error: any) {
       this.logger.error(`[REVIEW - get reviews] ${error}`);
-      if (error.response && error.status) {
-        return responseError(error.status as number, error.response as string);
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
       }
       return responseError(
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -73,8 +78,8 @@ export class ReviewsController {
       return responseSuccess(HttpStatus.OK, 'Ulasan berhasil ditemukan', data);
     } catch (error: any) {
       this.logger.error(`[REVIEW - get review] ${error}`);
-      if (error.response && error.status) {
-        return responseError(error.status as number, error.response as string);
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
       }
       return responseError(
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -82,15 +87,4 @@ export class ReviewsController {
       );
     }
   }
-
-  // It’s not currently needed for the development phase.
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() body: UpdateReviewDto) {
-  //   return this.reviewsService.update(+id, body);
-  // }
-
-  // @Delete(':id')
-  // remove(@Param('id') id: string) {
-  //   return this.reviewsService.remove(+id);
-  // }
 }

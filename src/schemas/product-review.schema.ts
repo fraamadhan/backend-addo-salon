@@ -15,6 +15,14 @@ export class ProductReview {
   @Prop({ type: Types.ObjectId, default: null, index: true, ref: 'Product' })
   productId!: Types.ObjectId;
 
+  @Prop({
+    type: Types.ObjectId,
+    default: null,
+    index: true,
+    ref: 'TransactionItems',
+  })
+  itemId!: Types.ObjectId;
+
   @Prop({ type: Types.ObjectId, default: null, index: true, ref: 'User' })
   userId!: Types.ObjectId;
 }

@@ -198,60 +198,64 @@ export class CartService {
     const session = await this.connection.startSession();
     session.startTransaction();
     try {
-      const updatedItems = await Promise.all(
-        items.map(async (item) => {
-          if (!item.productId || !item.cartId || !item.reservationDate) {
-            throw new HttpException(
-              'Missing cart id or product id or reservation date',
-              HttpStatus.BAD_REQUEST,
-            );
-          }
-          const cartObjectId = toObjectId(item.cartId);
-          const productObjectId = toObjectId(item.productId);
+      const updatedItems: Array<{
+        cartId: mongoose.Types.ObjectId;
+        productId: mongoose.Types.ObjectId;
+        reservationDate: Date;
+        note: string;
+        estimation: number;
+        price: number;
+      }> = [];
 
-          if (!productObjectId) {
-            throw new HttpException(
-              'Failed to convert product id to object id',
-              HttpStatus.BAD_REQUEST,
-            );
-          }
-
-          await this.checkIsNearToCloseTimeOrConflict(
-            item.reservationDate,
-            item.estimation,
-            'Terdapat item yang bentrok dengan pesanan pengguna lain. Silakan cek kembali jadwal pesanan dan ubah jadwal pesanan',
+      for (const item of items) {
+        if (!item.productId || !item.cartId || !item.reservationDate) {
+          throw new HttpException(
+            'Missing cart id or product id or reservation date',
+            HttpStatus.BAD_REQUEST,
           );
+        }
 
-          const updateCart = await this.cartModel
-            .findOneAndUpdate(
-              {
-                _id: cartObjectId,
-                productId: productObjectId,
-                userId: userObjectId,
-              },
-              { $set: { isCheckoutLocked: true } },
-              { new: true, session: session },
-            )
-            .select(
-              '_id productId userId reservationDate price isCheckoutLocked',
-            )
-            .lean()
-            .exec();
+        const cartObjectId = toObjectId(item.cartId);
+        const productObjectId = toObjectId(item.productId);
 
-          if (updateCart) {
-            return {
-              cartId: updateCart._id,
-              productId: updateCart.productId,
-              reservationDate: updateCart.reservationDate,
-              note: item.note || '',
-              estimation: item.estimation,
-              price: updateCart.price,
-            };
-          }
+        if (!productObjectId) {
+          throw new HttpException(
+            'Failed to convert product id to object id',
+            HttpStatus.BAD_REQUEST,
+          );
+        }
 
-          return null;
-        }),
-      );
+        await this.checkIsNearToCloseTimeOrConflict(
+          item.reservationDate,
+          item.estimation,
+          'Terdapat item yang bentrok dengan pesanan pengguna lain. Silakan cek kembali jadwal pesanan dan ubah jadwal pesanan',
+        );
+
+        const updateCart = await this.cartModel
+          .findOneAndUpdate(
+            {
+              _id: cartObjectId,
+              productId: productObjectId,
+              userId: userObjectId,
+            },
+            { $set: { isCheckoutLocked: true } },
+            { new: true, session },
+          )
+          .select('_id productId userId reservationDate price isCheckoutLocked')
+          .lean()
+          .exec();
+
+        if (updateCart) {
+          updatedItems.push({
+            cartId: updateCart._id,
+            productId: updateCart.productId,
+            reservationDate: updateCart.reservationDate,
+            note: item.note || '',
+            estimation: item.estimation,
+            price: updateCart.price,
+          });
+        }
+      }
 
       await session.commitTransaction();
       const data = updatedItems.filter(Boolean);
@@ -345,7 +349,6 @@ export class CartService {
       { $limit: 1 },
     ]);
 
-    console.log(conflict);
     if (conflict.length !== 0) {
       const conflictItem = conflict[0] as {
         reservationDate?: string | number | Date;

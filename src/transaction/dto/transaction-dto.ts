@@ -106,7 +106,6 @@ class ItemsDto {
 }
 
 export class PaymentPaginationParams extends PaginationParams {
-  @IsEnum(ReservationStatus)
   @IsString()
   @IsOptional()
   paymentStatus?: ReservationStatus;

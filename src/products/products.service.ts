@@ -96,12 +96,25 @@ export class ProductsService {
 
     const sort: Record<string, 1 | -1> = {
       [sortby]: sorttype,
+      _id: 1,
     };
 
     if (params.keyword) {
       const result = sanitizeKeyword(params.keyword);
 
       keywordSanitized = result.keywordSanitized;
+    }
+
+    if (params.highestPrice || params.lowestPrice) {
+      const priceQuery = {};
+      if (params.lowestPrice) {
+        priceQuery['$gte'] = params.lowestPrice;
+      }
+      if (params.highestPrice) {
+        priceQuery['$lte'] = params.highestPrice;
+      }
+
+      query.$and.push({ price: priceQuery });
     }
 
     if (keywordSanitized.length !== 0) {
@@ -115,22 +128,6 @@ export class ProductsService {
     if (params.type) {
       query.$and.push({
         type: params.type,
-      });
-    }
-
-    if (params.highestPrice) {
-      query.$and.push({
-        price: {
-          $lte: params.highestPrice,
-        },
-      });
-    }
-
-    if (params.lowestPrice) {
-      query.$and.push({
-        price: {
-          $gte: params.lowestPrice,
-        },
       });
     }
 

@@ -28,6 +28,9 @@ export class Product {
   @Prop({ default: 0 })
   ratingAverage!: number;
 
+  @Prop({ default: 0 })
+  ratingSum?: number;
+
   @Prop({ enum: StyleType, required: true })
   type!: StyleType;
 
