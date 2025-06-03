@@ -83,10 +83,12 @@ export class DashboardService {
     ] = await Promise.all([
       this.productModel.countDocuments(),
       this.employeeModel.countDocuments(),
-      this.transactionModel.countDocuments(),
+      this.transactionModel.countDocuments({
+        status: ReservationStatus.COMPLETED,
+      }),
       this.userModel.countDocuments(),
       this.transactionItemModel.countDocuments({
-        serviceStatus: ReservationStatus.COMPLETED,
+        serviceStatus: ReservationStatus.SCHEDULED,
       }),
       this.transactionItemModel.find(query).exec(),
     ]);

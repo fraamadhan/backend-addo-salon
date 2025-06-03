@@ -1,5 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { UserUpdateDto } from './dto/user.dto';
+import { UserCreateDto, UserUpdateDto } from './dto/user.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { User, UserDocument } from 'src/schemas/user.schema';
 import mongoose, { Model, PaginateModel } from 'mongoose';
@@ -11,6 +11,7 @@ import Logger from 'src/logger';
 import { sanitizeKeyword } from 'src/utils/sanitize-keyword';
 import { SortType } from 'src/types/sorttype';
 import { PaginationParams } from 'src/types/pagination';
+import { RoleType } from 'src/types/role';
 
 @Injectable()
 export class UsersService {
@@ -34,6 +35,7 @@ export class UsersService {
 
     const sort: Record<string, 1 | -1> = {
       [sortby]: sorttype,
+      updatedAt: -1,
     };
 
     if (params.keyword) {
@@ -57,7 +59,7 @@ export class UsersService {
           },
           {
             email: {
-              $regex: new RegExp(`${keywordSanitized}`, 'i'),
+              $regex: new RegExp(`${params.keyword}`, 'i'),
             },
           },
         ],
@@ -121,8 +123,81 @@ export class UsersService {
     return data;
   }
 
+  async cmsAddUser(body: UserCreateDto, file?: Express.Multer.File) {
+    const before = Date.now();
+
+    body['is_verified'] = body.is_verified === 'false' ? false : true;
+
+    try {
+      if (body.email) {
+        const existingUser = await this.userModel
+          .findOne({
+            email: body.email,
+          })
+          .exec();
+
+        if (existingUser) {
+          throw new HttpException(
+            'Email has already been taken. Please choose another email',
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+      }
+
+      if (body.password) {
+        const hashedPassword = await bcrypt.hash(body.password, 10);
+
+        body.password = hashedPassword;
+      }
+
+      if (body.is_verified) {
+        body.email_verified_at = new Date(Date.now());
+      }
+
+      const user = await this.userModel.create(body);
+
+      if (!user) {
+        throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+      }
+
+      if (file) {
+        const file_path = `${prefix_public_user_file}/${Date.now()}_${file.originalname}`;
+
+        const uploadToSupabase = await this.supabaseService.uploadImage(
+          file_path,
+          file,
+        );
+
+        if (!uploadToSupabase?.path) {
+          throw new HttpException(
+            'Failed to upload image to server',
+            HttpStatus.INTERNAL_SERVER_ERROR,
+          );
+        }
+
+        await this.userAssetModel.create({
+          type: file.mimetype,
+          path: uploadToSupabase.path,
+          publicUrl: uploadToSupabase.url,
+          userId: user._id,
+        });
+      }
+
+      const after = Date.now();
+      const duration = after - before;
+      console.log(`Operation update user took ${duration / 1000} seconds`);
+
+      return user;
+    } catch (error: any) {
+      this.logger.error(`[UsersService] - update. Error occured: ${error}`);
+      throw error;
+    }
+  }
+
   async update(id: string, body: UserUpdateDto, file?: Express.Multer.File) {
     const before = Date.now();
+
+    body['is_verified'] = body.is_verified === 'false' ? false : true;
 
     try {
       if (
@@ -157,7 +232,23 @@ export class UsersService {
         );
       }
 
-      if (body.password) {
+      if (
+        body.password &&
+        body.confirmPassword &&
+        body.role === RoleType.ADMIN
+      ) {
+        if (body.password !== body.confirmPassword) {
+          throw new HttpException(
+            'Konfirmasi kata sandi tidak cocok',
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+        const hashedPassword = await bcrypt.hash(body.password, 10);
+
+        body.password = hashedPassword;
+      }
+
+      if (body.password && body.role === RoleType.USER) {
         if (!body.oldPassword) {
           throw new HttpException(
             'Kata sandi lama harus diisi',

@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Get,
   Query,
+  HttpException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
@@ -48,8 +49,8 @@ export class AuthController {
       );
     } catch (error: any) {
       this.logger.error(`[AuthController - register] ${error}`);
-      if (error.response && error.status) {
-        return responseError(error.status, error.response);
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
       }
       return responseError(
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -70,8 +71,30 @@ export class AuthController {
       );
     } catch (error: any) {
       this.logger.error(`[AuthController - login] ${error}`);
-      if (error.response && error.status) {
-        return responseError(error.status, error.response);
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
+      }
+      return responseError(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        'Internal Server Error',
+      );
+    }
+  }
+
+  @Post('/cms/login')
+  async cmsLogin(@Body() body: LoginDTO) {
+    try {
+      const data = await this.authService.cmsLogin(body);
+
+      return responseSuccess(
+        HttpStatus.OK,
+        'Anda berhasil masuk ke aplikasi',
+        data,
+      );
+    } catch (error: any) {
+      this.logger.error(`[AuthController - login] ${error}`);
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
       }
       return responseError(
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -88,8 +111,8 @@ export class AuthController {
       return responseSuccess(HttpStatus.OK, 'Email berhasil diverifikasi');
     } catch (error: any) {
       this.logger.errorString(error as string);
-      if (error.response && error.status) {
-        return responseError(error.status, error.response);
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
       }
       return responseError(
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -122,8 +145,8 @@ export class AuthController {
       );
     } catch (error: any) {
       this.logger.errorString(error as string);
-      if (error.response && error.status) {
-        return responseError(error.status, error.response);
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
       }
       return responseError(
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -149,8 +172,8 @@ export class AuthController {
       return responseSuccess(HttpStatus.OK, 'Password berhasil diubah');
     } catch (error: any) {
       this.logger.errorString(error as string);
-      if (error.response && error.status) {
-        return responseError(error.status, error.response);
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
       }
       return responseError(
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -167,8 +190,8 @@ export class AuthController {
       return responseSuccess(HttpStatus.OK, 'Token berhasil diverifikasi');
     } catch (error: any) {
       this.logger.errorString(error as string);
-      if (error.response && error.status) {
-        return responseError(error.status, error.response);
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
       }
       return responseError(
         HttpStatus.INTERNAL_SERVER_ERROR,
