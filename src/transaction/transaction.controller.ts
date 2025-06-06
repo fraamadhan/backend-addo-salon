@@ -128,7 +128,7 @@ export class TransactionController {
   async getStatusTransactionMidtrans(@Param('orderId') orderId: string) {
     try {
       const data =
-        await this.transactionService.getTransactionStatuMidtrans(orderId);
+        await this.transactionService.getTransactionStatusMidtrans(orderId);
 
       return responseSuccess(HttpStatus.OK, 'Success', data);
     } catch (error: any) {

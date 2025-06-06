@@ -15,29 +15,17 @@ import { PaginationParams } from 'src/types/pagination';
 export class CmsUpdateTransactionDto {
   @IsString()
   @IsOptional()
-  orderCode?: string;
-
-  @IsString()
-  @IsOptional()
   customerName?: string;
 
   @IsMongoId()
   @IsOptional()
   employeeId?: Types.ObjectId;
-
-  @IsString()
-  @IsOptional()
-  transactionType?: string;
 }
 
 export class UpdateScheduleDto {
   @IsMongoId()
   @IsNotEmpty()
   userId!: Types.ObjectId;
-
-  @IsMongoId()
-  @IsNotEmpty()
-  transactionItemId!: Types.ObjectId;
 
   @IsDate()
   @IsNotEmpty()
@@ -56,7 +44,7 @@ export class TransactionQueryParams extends PaginationParams {
   @IsDate()
   @IsOptional()
   @Type(() => Date)
-  reservationDate?: Date;
+  reservationDate?: string;
 
   @IsMongoId()
   @IsOptional()
@@ -65,12 +53,12 @@ export class TransactionQueryParams extends PaginationParams {
   @IsDate()
   @IsOptional()
   @Type(() => Date)
-  startDate?: Date;
+  startDate?: string;
 
   @IsDate()
   @IsOptional()
   @Type(() => Date)
-  endDate?: Date;
+  endDate?: string;
 }
 
 export class CmsCreateTransactionDto {

@@ -94,15 +94,16 @@ export class CmsTransactionService {
 
   async getOrders(params: TransactionQueryParams) {
     const page = params.page ?? 1;
-    const limit = params.limit ?? 20;
+    const limit = params.limit ?? 10;
     const skip = (page - 1) * limit;
 
     let keywordSanitized = '';
 
     const sorttype: 1 | -1 = params.sorttype === SortType.asc ? 1 : -1;
-    const sortby = params.sortby ?? 'CreatedAt';
+    const sortby = params.sortby ?? 'reservationDate';
     const sort: Record<string, 1 | -1> = {
       [sortby]: sorttype,
+      _id: -1,
     };
 
     if (params.keyword) {
@@ -117,12 +118,34 @@ export class CmsTransactionService {
           ReservationStatus.PENDING,
           ReservationStatus.COMPLETED,
           ReservationStatus.CANCELED,
+          ReservationStatus.EXPIRED,
+        ],
+      },
+      serviceStatus: {
+        $nin: [
+          ReservationStatus.CART,
+          ReservationStatus.PENDING,
+          ReservationStatus.COMPLETED,
+          ReservationStatus.CANCELED,
+          ReservationStatus.EXPIRED,
         ],
       },
     };
 
+    if (params.startDate || params.endDate) {
+      const reservationDateQuery = {};
+      if (params.startDate) {
+        reservationDateQuery['$gte'] = params.startDate;
+      }
+      if (params.endDate) {
+        reservationDateQuery['$lte'] = params.endDate;
+      }
+
+      matchStage['reservationDate'] = reservationDateQuery;
+    }
+
     if (params.orderStatus) {
-      matchStage['transaction.status'] = params.orderStatus;
+      matchStage['serviceStatus'] = params.orderStatus;
     }
 
     const result: AggregatedResult[] =
@@ -222,8 +245,8 @@ export class CmsTransactionService {
         },
       ]);
 
-    const orders = result[0].data;
-    const total = result[0].totalCount[0].total ?? 0;
+    const [{ data: orders = [], totalCount = [] }] = result;
+    const total = totalCount?.[0]?.total ?? 0;
 
     const paginator = {
       totalItem: total,
@@ -284,7 +307,11 @@ export class CmsTransactionService {
 
     const matchStages: Record<string, any> = {
       'transaction.status': {
-        $in: [ReservationStatus.COMPLETED, ReservationStatus.CANCELED],
+        $in: [
+          ReservationStatus.COMPLETED,
+          ReservationStatus.CANCELED,
+          ReservationStatus.EXPIRED,
+        ],
       },
     };
 
@@ -428,7 +455,7 @@ export class CmsTransactionService {
     return result;
   }
 
-  async findOrder(id: string) {
+  async findHistoryTransaction(id: string) {
     if (!id) {
       throw new HttpException('Missing transaction id', HttpStatus.BAD_REQUEST);
     }
@@ -498,10 +525,80 @@ export class CmsTransactionService {
     };
   }
 
+  async findOrder(id: string) {
+    if (!id) {
+      throw new HttpException('Missing order id', HttpStatus.BAD_REQUEST);
+    }
+
+    const data = await this.transactionItemModel
+      .findById(id)
+      .populate([
+        {
+          path: 'productId',
+          select: '_id name estimation',
+        },
+        {
+          path: 'employeeId',
+          select: '_id name email phoneNumber',
+        },
+      ])
+      .lean()
+      .exec();
+
+    if (!data) {
+      throw new HttpException(
+        'Failed to get data detail order',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const transaction = await this.transactionModel
+      .findById(data.transactionId)
+      .select('userId')
+      .populate('userId', '_id name ')
+      .lean()
+      .exec();
+
+    if (!transaction) {
+      throw new HttpException(
+        'Failed to get data transaction',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const { userId } = transaction;
+
+    const { productId, employeeId, ...rest } = data;
+
+    const assetRef = await this.productAssetModel
+      .findOne({
+        productId: productId._id,
+      })
+      .select('publicUrl -_id')
+      .exec();
+
+    const item = {
+      ...rest,
+      product: {
+        ...productId,
+        assetRef: assetRef?.publicUrl,
+      },
+      employee: {
+        ...employeeId,
+      },
+      user: {
+        ...userId,
+      },
+    };
+
+    return item;
+  }
+
   async updateOrder(id: string, body: CmsUpdateTransactionDto) {
     if (!id) {
       throw new HttpException('Missing transaction id', HttpStatus.BAD_REQUEST);
     }
+
     const session = await this.connection.startSession();
     session.startTransaction();
     try {
@@ -511,9 +608,7 @@ export class CmsTransactionService {
             _id: id,
           },
           {
-            orderCode: body.orderCode,
             customerName: body.customerName,
-            transactionType: body.transactionType,
           },
           { new: true, session: session },
         )
@@ -554,46 +649,82 @@ export class CmsTransactionService {
       return true;
     } catch (error) {
       this.logger.errorString(
-        `[CMS TransactionService - update order] ${error as string}`,
+        `[CMS TransactionService - update general info order] ${error as string}`,
       );
       await session.abortTransaction();
       throw error;
     } finally {
-      console.log('Lihat sini');
       await session.endSession();
     }
   }
 
   async updateStatus(id: string, status: ReservationStatus) {
     try {
-      const transaction = await this.transactionModel
+      const serviceStatus = [
+        ReservationStatus.IN_PROGRESS,
+        ReservationStatus.COMPLETED,
+        ReservationStatus.CANCELED,
+        ReservationStatus.PENDING,
+        ReservationStatus.UNPAID,
+        ReservationStatus.SCHEDULED,
+      ].includes(status)
+        ? status
+        : undefined;
+
+      const data = await this.transactionItemModel
         .findOneAndUpdate(
           {
             _id: id,
           },
-          { status: status },
+          { serviceStatus: serviceStatus },
           { new: true },
         )
-        .lean()
         .exec();
 
-      if (transaction) {
-        const serviceStatus = [
-          ReservationStatus.IN_PROGRESS,
-          ReservationStatus.COMPLETED,
-          ReservationStatus.CANCELED,
-        ].includes(status)
-          ? status
-          : undefined;
+      if (!data) {
+        throw new HttpException(
+          'Pesanan tidak ditemukan',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
 
-        await this.transactionItemModel
-          .updateMany(
-            {
-              transactionId: transaction._id,
-            },
-            { serviceStatus: serviceStatus },
-          )
-          .exec();
+      const transactionId = data?.transactionId;
+
+      // find all item by transaction id
+      const items = await this.transactionItemModel
+        .find({ transactionId })
+        .exec();
+      // if there's item with service status IN_PROGRESS dont update the transaction status
+      const hasInProgress = items.some(
+        (item) => item.serviceStatus === ReservationStatus.IN_PROGRESS,
+      );
+
+      if (hasInProgress) {
+        return true;
+      }
+      // if all the transaction cancel, update all canceled
+      const allItemCanceled = items.every(
+        (item) => item.serviceStatus === ReservationStatus.CANCELED,
+      );
+      if (allItemCanceled) {
+        await this.transactionModel.updateOne(
+          { _id: transactionId },
+          { status: ReservationStatus.CANCELED },
+        );
+
+        return true;
+      }
+      // if there's no in progress status, check if there' s service status with COMPLETED
+      const hasCompleted = items.some(
+        (item) => item.serviceStatus === ReservationStatus.COMPLETED,
+      );
+
+      // if yes update to complete
+      if (hasCompleted) {
+        await this.transactionModel.updateOne(
+          { _id: transactionId },
+          { status: ReservationStatus.COMPLETED },
+        );
       }
 
       return true;
@@ -622,7 +753,7 @@ export class CmsTransactionService {
       await this.transactionItemModel
         .findOneAndUpdate(
           {
-            _id: body.transactionItemId,
+            _id: id,
           },
           { reservationDate: body.reservationDate },
           { new: true },
@@ -689,8 +820,9 @@ export class CmsTransactionService {
         },
         {
           $match: {
-            'transaction.userId': { $ne: userId },
-            serviceStatus: ReservationStatus.SCHEDULED,
+            serviceStatus: {
+              $in: [ReservationStatus.SCHEDULED, ReservationStatus.IN_PROGRESS],
+            },
             'transaction.status': {
               $in: [ReservationStatus.PAID, ReservationStatus.SCHEDULED],
             },

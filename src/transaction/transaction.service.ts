@@ -232,7 +232,7 @@ export class TransactionService {
         if (fraudStatus === 'accept') {
           await this.updateAfterHandlePayment(
             body,
-            ReservationStatus.SCHEDULED,
+            ReservationStatus.PAID,
             ReservationStatus.SCHEDULED,
           );
         }
@@ -332,7 +332,7 @@ export class TransactionService {
     return data;
   }
 
-  async getTransactionStatuMidtrans(orderId: string) {
+  async getTransactionStatusMidtrans(orderId: string) {
     try {
       const data = await this.midtransService.getStatus(orderId);
 
@@ -474,7 +474,6 @@ export class TransactionService {
             ReservationStatus.CART,
             ReservationStatus.PENDING,
             ReservationStatus.UNPAID,
-            ReservationStatus.PAID,
           ],
         },
       });
@@ -1144,7 +1143,9 @@ export class TransactionService {
       },
       {
         $match: {
-          serviceStatus: ReservationStatus.SCHEDULED,
+          serviceStatus: {
+            $in: [ReservationStatus.SCHEDULED, ReservationStatus.IN_PROGRESS],
+          },
           'transaction.status': {
             $in: [ReservationStatus.PAID, ReservationStatus.SCHEDULED],
           },

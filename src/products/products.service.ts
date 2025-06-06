@@ -91,12 +91,12 @@ export class ProductsService {
     const query: ProductQuery = {
       $and: [],
     };
-    const sortby: string = params?.sortby ? params.sortby : 'createdAt';
+    const sortby: string = params?.sortby ? params.sortby : 'updatedAt';
     const sorttype = params.sorttype === SortType.asc ? 1 : -1;
 
     const sort: Record<string, 1 | -1> = {
       [sortby]: sorttype,
-      _id: 1,
+      _id: -1,
     };
 
     if (params.keyword) {

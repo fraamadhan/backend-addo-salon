@@ -108,6 +108,19 @@ export class EmployeeService {
     };
   }
 
+  async getEmployees() {
+    const data = await this.employeeModel.find().exec();
+
+    if (!data) {
+      throw new HttpException(
+        'Employee data not found',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return data;
+  }
+
   async findOne(id: string) {
     const data = await this.employeeModel.findById(id).lean().exec();
 
