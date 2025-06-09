@@ -20,6 +20,7 @@ import {
 } from 'src/schemas/password-reset.schema';
 import { mailTemplate } from 'src/utils/mail-template';
 import { JwtService } from '@nestjs/jwt';
+import { RoleType } from 'src/types/role';
 
 @Injectable()
 export class AuthService {
@@ -70,6 +71,52 @@ export class AuthService {
         'Pengguna tidak ditemukan',
         HttpStatus.UNAUTHORIZED,
       );
+    }
+
+    //check if user is verified
+    if (!existingUser.is_verified) {
+      const token = await this.generateVerificationToken(
+        existingUser.email,
+        EmailVerificationType.REGISTER,
+      );
+
+      await this.addEmailVerificationJob(existingUser.email, token);
+
+      throw new HttpException(
+        'Pengguna belum terverifikasi. Cek email Anda untuk verifikasi email.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    //check if password is correct
+    const isMatch = await bcrypt.compare(password, existingUser.password);
+    if (!isMatch) {
+      throw new HttpException(
+        'Email atau kata sandi salah',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    const { password: _, ...user } = existingUser;
+
+    const payload = user;
+
+    user['access_token'] = await this.jwtService.signAsync(payload);
+
+    return user;
+  }
+
+  async cmsLogin(body: LoginDTO) {
+    const { email, password } = body;
+
+    //check if user exists
+    const existingUser = await this.userModel
+      .findOne({ email, role: RoleType.ADMIN })
+      .lean()
+      .exec();
+
+    if (!existingUser) {
+      throw new HttpException('Anda bukan admin', HttpStatus.UNAUTHORIZED);
     }
 
     //check if user is verified
@@ -235,7 +282,6 @@ export class AuthService {
     }
 
     const isExpired = new Date(existingToken.expired_time) < new Date();
-    console.log(isExpired);
 
     if (isExpired) {
       await this.passwordResetModel.deleteOne({

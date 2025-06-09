@@ -60,7 +60,27 @@ export class EmployeeController {
       return responseSuccess(HttpStatus.OK, 'Success', data);
     } catch (error) {
       this.logger.errorString(
-        `[EmployeeController - get users] ${error as string}`,
+        `[EmployeeController - get employee] ${error as string}`,
+      );
+
+      return responseError(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        'Internal server error',
+      );
+    }
+  }
+
+  @Get('choose')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN)
+  async chooseEmployees() {
+    try {
+      const data = await this.employeeService.getEmployees();
+
+      return responseSuccess(HttpStatus.OK, 'Success', data);
+    } catch (error) {
+      this.logger.errorString(
+        `[EmployeeController - get choose employee] ${error as string}`,
       );
 
       return responseError(

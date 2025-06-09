@@ -84,6 +84,12 @@ export class ProductsService {
   }
 
   async findAll(params: ParamsSearchProductDto) {
+    if (params.getAll) {
+      const data = await this.productModel.find({}, { name: 1 }).exec();
+
+      return data;
+    }
+
     const page = params.page ?? 1;
     const limit = params.limit ?? 10;
 
@@ -91,12 +97,12 @@ export class ProductsService {
     const query: ProductQuery = {
       $and: [],
     };
-    const sortby: string = params?.sortby ? params.sortby : 'createdAt';
+    const sortby: string = params?.sortby ? params.sortby : 'updatedAt';
     const sorttype = params.sorttype === SortType.asc ? 1 : -1;
 
     const sort: Record<string, 1 | -1> = {
       [sortby]: sorttype,
-      _id: 1,
+      _id: -1,
     };
 
     if (params.keyword) {

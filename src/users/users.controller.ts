@@ -12,6 +12,7 @@ import {
   UseInterceptors,
   Query,
   HttpException,
+  Post,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import Logger from 'src/logger';
@@ -19,7 +20,7 @@ import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { Roles } from 'src/utils/custom-decorator/roles.decorator';
 import { RoleType } from 'src/types/role';
 import { RolesGuard } from 'src/auth/roles.guard';
-import { UserUpdateDto } from './dto/user.dto';
+import { UserCreateDto, UserUpdateDto } from './dto/user.dto';
 import { responseError, responseSuccess } from 'src/utils/response';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PaginationParams } from 'src/types/pagination';
@@ -29,6 +30,47 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   private readonly logger = new Logger();
+
+  @Post('/cms')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN, RoleType.USER)
+  @UseInterceptors(FileInterceptor('file'))
+  async cmsAddUser(
+    @Body() body: UserCreateDto,
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({
+          fileType: /image\/(jpeg|jpg|png|webp|svg)$/,
+        })
+        .addMaxSizeValidator({
+          maxSize: 5_000_000,
+        })
+        .build({
+          fileIsRequired: false,
+          errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+        }),
+    )
+    file?: Express.Multer.File,
+  ) {
+    try {
+      const data = await this.usersService.cmsAddUser(body, file);
+
+      return responseSuccess(
+        HttpStatus.CREATED,
+        'Pengguna berhasil ditambahkan',
+        data,
+      );
+    } catch (error: any) {
+      this.logger.errorString(error as string);
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
+      }
+      return responseError(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        'Internal Server Error',
+      );
+    }
+  }
 
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -79,7 +121,7 @@ export class UsersController {
     @UploadedFile(
       new ParseFilePipeBuilder()
         .addFileTypeValidator({
-          fileType: /image\/(jpeg|jpg|png|webp)$/,
+          fileType: /image\/(jpeg|jpg|png|webp|svg)$/,
         })
         .addMaxSizeValidator({
           maxSize: 5_000_000,

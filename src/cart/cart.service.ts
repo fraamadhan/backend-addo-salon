@@ -329,7 +329,9 @@ export class CartService {
       },
       {
         $match: {
-          serviceStatus: ReservationStatus.SCHEDULED,
+          serviceStatus: {
+            $in: [ReservationStatus.SCHEDULED, ReservationStatus.IN_PROGRESS],
+          },
           'transaction.status': {
             $in: [ReservationStatus.PAID, ReservationStatus.SCHEDULED],
           },

@@ -20,4 +20,5 @@ export enum PaymentMethod {
   BANK_TRANSFER = 'bank_transfer',
   GOPAY = 'gopay',
   QRIS = 'qris',
+  CASH = 'cash',
 }

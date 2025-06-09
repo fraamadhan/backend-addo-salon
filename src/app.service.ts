@@ -66,7 +66,7 @@ export class AppService {
 
     const after = Date.now();
     const duration = after - before;
-    console.log(`Operation took ${duration / 1000} seconds`);
+    // console.log(`Operation took ${duration / 1000} seconds`);
     return user;
   }
 
@@ -122,7 +122,7 @@ export class AppService {
       }
       const after = Date.now();
       const duration = after - before;
-      console.log(`Operation took ${duration / 1000} seconds`);
+      // console.log(`Operation took ${duration / 1000} seconds`);
 
       return user;
     } catch (err: any) {

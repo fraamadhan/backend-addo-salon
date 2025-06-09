@@ -15,29 +15,17 @@ import { PaginationParams } from 'src/types/pagination';
 export class CmsUpdateTransactionDto {
   @IsString()
   @IsOptional()
-  orderCode?: string;
-
-  @IsString()
-  @IsOptional()
   customerName?: string;
 
   @IsMongoId()
   @IsOptional()
   employeeId?: Types.ObjectId;
-
-  @IsString()
-  @IsOptional()
-  transactionType?: string;
 }
 
 export class UpdateScheduleDto {
   @IsMongoId()
   @IsNotEmpty()
   userId!: Types.ObjectId;
-
-  @IsMongoId()
-  @IsNotEmpty()
-  transactionItemId!: Types.ObjectId;
 
   @IsDate()
   @IsNotEmpty()
@@ -56,7 +44,7 @@ export class TransactionQueryParams extends PaginationParams {
   @IsDate()
   @IsOptional()
   @Type(() => Date)
-  reservationDate?: Date;
+  reservationDate?: string;
 
   @IsMongoId()
   @IsOptional()
@@ -65,22 +53,42 @@ export class TransactionQueryParams extends PaginationParams {
   @IsDate()
   @IsOptional()
   @Type(() => Date)
-  startDate?: Date;
+  startDate?: string;
 
   @IsDate()
   @IsOptional()
   @Type(() => Date)
-  endDate?: Date;
+  endDate?: string;
 }
 
 export class CmsCreateTransactionDto {
-  @IsNumber()
+  @IsString()
   @IsNotEmpty()
-  total_price!: number;
+  customerName!: string;
+
+  @IsString()
+  @IsOptional()
+  orderCode?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  employeeId!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  transactionType!: string;
+
+  @IsDate()
+  @IsNotEmpty()
+  reservationDate!: Date;
 
   @IsEnum(ReservationStatus)
   @IsNotEmpty()
   status!: ReservationStatus;
+
+  @IsString()
+  @IsNotEmpty()
+  productId!: string;
 
   @IsString()
   @IsNotEmpty()
@@ -89,24 +97,4 @@ export class CmsCreateTransactionDto {
   @IsString()
   @IsOptional()
   bank?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  transactionType!: string;
-
-  @IsString()
-  @IsNotEmpty()
-  customerName!: string;
-
-  @IsString()
-  @IsNotEmpty()
-  serviceName!: string;
-
-  @IsNumber()
-  @IsNotEmpty()
-  servicePrice!: number;
-
-  @IsDate()
-  @IsNotEmpty()
-  reservationDate!: Date;
 }

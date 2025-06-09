@@ -92,6 +92,28 @@ export class CmsTransactionController {
     }
   }
 
+  @Get('/history/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN)
+  async findHistory(@Param('id') id: string) {
+    try {
+      const data = await this.transactionService.findHistoryTransaction(id);
+
+      return responseSuccess(HttpStatus.OK, 'Success', data);
+    } catch (error) {
+      this.logger.errorString(
+        `[CMS TransactionController - find detail history] ${error as string}`,
+      );
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
+      }
+      return responseError(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        'Internal server error',
+      );
+    }
+  }
+
   @Get('/order/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleType.ADMIN)
@@ -102,7 +124,7 @@ export class CmsTransactionController {
       return responseSuccess(HttpStatus.OK, 'Success', data);
     } catch (error) {
       this.logger.errorString(
-        `[CMS TransactionController - find order] ${error as string}`,
+        `[CMS TransactionController - find detail order] ${error as string}`,
       );
       if (error instanceof HttpException) {
         return responseError(error.getStatus(), error.message);

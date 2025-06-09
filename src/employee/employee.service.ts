@@ -31,7 +31,7 @@ export class EmployeeService {
 
   async findAll(params: PaginationParams) {
     const page = params.page ?? 1;
-    const limit = params.limit ?? 25;
+    const limit = params.limit ?? 10;
 
     let keywordSanitized = '';
     const query: Query = {
@@ -43,6 +43,7 @@ export class EmployeeService {
 
     const sort: Record<string, number> = {
       [sortby]: sorttype,
+      name: 1,
     };
 
     if (params.keyword) {
@@ -105,6 +106,19 @@ export class EmployeeService {
       employees,
       paginator,
     };
+  }
+
+  async getEmployees() {
+    const data = await this.employeeModel.find().exec();
+
+    if (!data) {
+      throw new HttpException(
+        'Employee data not found',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return data;
   }
 
   async findOne(id: string) {

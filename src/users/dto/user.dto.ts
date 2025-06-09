@@ -1,3 +1,4 @@
+import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsDate,
@@ -36,6 +37,60 @@ class PasswordMatchConstraint implements ValidatorConstraintInterface {
   defaultMessage(args?: ValidationArguments): string {
     return `Password and Confirm Password must match`;
   }
+}
+
+export class UserCreateDto {
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @IsEmail()
+  @IsOptional()
+  email?: string;
+
+  @IsString()
+  @IsOptional()
+  @MinLength(4)
+  @Matches(/((?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
+    message: 'password too weak',
+  })
+  password?: string;
+
+  @IsString()
+  @IsOptional()
+  @IsIn(gender)
+  @MaxLength(8)
+  gender?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(14)
+  phone_number?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(255)
+  address?: string;
+
+  @IsDateString()
+  @IsOptional()
+  birth_date?: string;
+
+  @IsString()
+  @IsEnum(RoleType)
+  @IsOptional()
+  role?: RoleType;
+
+  @IsString()
+  @IsOptional()
+  is_verified?: string | boolean;
+
+  @IsDate()
+  @IsOptional()
+  email_verified_at?: Date;
+
+  @IsOptional()
+  file?: any;
 }
 
 export class UserUpdateDto {
@@ -96,9 +151,9 @@ export class UserUpdateDto {
   @IsOptional()
   role?: RoleType;
 
-  @IsBoolean()
+  @IsString()
   @IsOptional()
-  is_verified?: boolean;
+  is_verified?: string | boolean;
 
   @IsDate()
   @IsOptional()
