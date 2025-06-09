@@ -84,6 +84,12 @@ export class ProductsService {
   }
 
   async findAll(params: ParamsSearchProductDto) {
+    if (params.getAll) {
+      const data = await this.productModel.find({}, { name: 1 }).exec();
+
+      return data;
+    }
+
     const page = params.page ?? 1;
     const limit = params.limit ?? 10;
 

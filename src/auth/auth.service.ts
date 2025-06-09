@@ -282,7 +282,6 @@ export class AuthService {
     }
 
     const isExpired = new Date(existingToken.expired_time) < new Date();
-    console.log(isExpired);
 
     if (isExpired) {
       await this.passwordResetModel.deleteOne({

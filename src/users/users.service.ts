@@ -185,7 +185,7 @@ export class UsersService {
 
       const after = Date.now();
       const duration = after - before;
-      console.log(`Operation update user took ${duration / 1000} seconds`);
+      this.logger.log(`Operation update user took ${duration / 1000} seconds`);
 
       return user;
     } catch (error: any) {
@@ -338,7 +338,7 @@ export class UsersService {
 
       const after = Date.now();
       const duration = after - before;
-      console.log(`Operation update user took ${duration / 1000} seconds`);
+      this.logger.log(`Operation update user took ${duration / 1000} seconds`);
 
       return user;
     } catch (error: any) {

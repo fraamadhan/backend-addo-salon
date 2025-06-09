@@ -1,8 +1,10 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import Logger from './logger';
 
 async function bootstrap() {
+  const logger = new Logger();
   const app = await NestFactory.create(AppModule, { abortOnError: false });
   app.useGlobalPipes(
     new ValidationPipe({
@@ -17,20 +19,21 @@ async function bootstrap() {
   );
 
   const whitelist = (process.env.CORS_ORIGIN_OPTIONS ?? '').split(',');
-  console.log(whitelist);
+  // console.log(whitelist);
   const corsOptions = {
     origin: function (
       origin: string | undefined,
       callback: (err: Error | null, allow: boolean) => void,
     ) {
       if (!origin || origin === undefined) {
-        console.log('Origin undefined');
+        logger.errorString(`this origin: ${origin} undefined`);
         return callback(null, true);
       }
       if (whitelist.indexOf(origin) !== -1) {
         callback(null, true);
       } else {
-        console.log('blocked cors for:', origin);
+        logger.errorString(`blocked cors for ${origin}`);
+        // console.log('blocked cors for:', origin);
         callback(new Error('Not allowed by CORS'), false);
       }
     },

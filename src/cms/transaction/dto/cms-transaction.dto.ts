@@ -62,13 +62,33 @@ export class TransactionQueryParams extends PaginationParams {
 }
 
 export class CmsCreateTransactionDto {
-  @IsNumber()
+  @IsString()
   @IsNotEmpty()
-  total_price!: number;
+  customerName!: string;
+
+  @IsString()
+  @IsOptional()
+  orderCode?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  employeeId!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  transactionType!: string;
+
+  @IsDate()
+  @IsNotEmpty()
+  reservationDate!: Date;
 
   @IsEnum(ReservationStatus)
   @IsNotEmpty()
   status!: ReservationStatus;
+
+  @IsString()
+  @IsNotEmpty()
+  productId!: string;
 
   @IsString()
   @IsNotEmpty()
@@ -77,24 +97,4 @@ export class CmsCreateTransactionDto {
   @IsString()
   @IsOptional()
   bank?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  transactionType!: string;
-
-  @IsString()
-  @IsNotEmpty()
-  customerName!: string;
-
-  @IsString()
-  @IsNotEmpty()
-  serviceName!: string;
-
-  @IsNumber()
-  @IsNotEmpty()
-  servicePrice!: number;
-
-  @IsDate()
-  @IsNotEmpty()
-  reservationDate!: Date;
 }

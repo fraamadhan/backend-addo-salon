@@ -183,8 +183,6 @@ export class CategoriesService {
         })
         .exec();
 
-      console.log(data);
-
       return data;
     } catch (error: any) {
       this.logger.error(`[CategoriesServive] - update ${error}`);

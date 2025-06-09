@@ -1,5 +1,11 @@
 import { Type } from 'class-transformer';
-import { IsEnum, IsNumber, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { StyleType } from 'src/types/enum';
 import { PaginationParams } from 'src/types/pagination';
 
@@ -34,4 +40,9 @@ export class ParamsSearchProductDto extends PaginationParams {
   @IsOptional()
   @IsEnum(StyleType)
   type?: StyleType;
+
+  @IsBoolean()
+  @IsOptional()
+  @Type(() => Boolean)
+  getAll?: boolean;
 }
