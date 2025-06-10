@@ -904,6 +904,73 @@ export class CmsTransactionService {
       }
     }
   }
+
+  async deleteTransaction(id: string, query: Record<string, string>) {
+    if (!id) {
+      throw new HttpException(
+        `ID transaksi tidak ditemukan`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const type = query.type;
+
+    if (type === 'payment') {
+      const transactionId = query.transactionId;
+
+      if (!transactionId) {
+        throw new HttpException(
+          'Transaction ID diperlukan untuk menghapus item pembayaran',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const item = await this.transactionItemModel
+        .findByIdAndDelete(id)
+        .lean()
+        .exec();
+
+      const items = await this.transactionItemModel.find({
+        transactionId: toObjectId(transactionId),
+      });
+
+      if (items.length === 0) {
+        await this.transactionModel
+          .findByIdAndDelete(transactionId)
+          .lean()
+          .exec();
+      }
+
+      if (!item) {
+        throw new HttpException(
+          `Pesanan tidak dapat ditemukan`,
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      return true;
+    } else if (type === 'transaction') {
+      await this.transactionItemModel
+        .deleteMany({
+          transactionId: toObjectId(id),
+        })
+        .exec();
+
+      const transaction = await this.transactionModel
+        .findByIdAndDelete(id)
+        .lean()
+        .exec();
+
+      if (!transaction) {
+        throw new HttpException(
+          'Transaksi tidak ditemukan',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      return true;
+    }
+  }
 }
 
 // DUPLICATE CODE

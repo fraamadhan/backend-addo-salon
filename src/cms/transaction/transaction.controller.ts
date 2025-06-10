@@ -10,6 +10,7 @@ import {
   Query,
   Put,
   Post,
+  Delete,
 } from '@nestjs/common';
 import { CmsTransactionService } from './transaction.service';
 import {
@@ -201,6 +202,36 @@ export class CmsTransactionController {
     } catch (error: any) {
       this.logger.errorString(
         `[CMS TransactionController - update schedule] ${error as string}`,
+      );
+      if (error instanceof HttpException) {
+        return responseError(error.getStatus(), error.message);
+      }
+      return responseError(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        `Internal server error: ${error as string}`,
+      );
+    }
+  }
+
+  @Delete('/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN)
+  async deleteTransaction(
+    @Param('id') id: string,
+    @Query() query: Record<string, string>,
+  ) {
+    try {
+      const result = await this.transactionService.deleteTransaction(id, query);
+
+      if (result) {
+        return responseSuccess(
+          HttpStatus.OK,
+          'Delete transaction successfully',
+        );
+      }
+    } catch (error: any) {
+      this.logger.errorString(
+        `[CMS TransactionController - delete transaction] ${error as string}`,
       );
       if (error instanceof HttpException) {
         return responseError(error.getStatus(), error.message);
