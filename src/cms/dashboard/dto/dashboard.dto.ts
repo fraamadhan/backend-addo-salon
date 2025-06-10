@@ -24,4 +24,9 @@ export class DashboardDto {
   @IsOptional()
   @Type(() => Boolean)
   sixMonth?: boolean;
+
+  @IsString()
+  @IsOptional()
+  @Type(() => String)
+  year?: string;
 }
