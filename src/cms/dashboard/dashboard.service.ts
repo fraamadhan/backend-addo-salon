@@ -73,6 +73,72 @@ export class DashboardService {
       if (lastDate) query.createdAt.$lte = lastDate;
     }
 
+    const matchStage = {
+      serviceStatus: ReservationStatus.COMPLETED,
+      reservationDate: { $ne: null },
+    };
+
+    const selectedYear =
+      parseInt(params.year ?? '') || new Date().getFullYear();
+
+    matchStage.reservationDate['$gte'] = new Date(selectedYear, 0, 1);
+    matchStage.reservationDate['$lte'] = new Date(selectedYear + 1, 0, 1);
+
+    const aggregateQuarter = this.transactionItemModel.aggregate([
+      {
+        $match: matchStage,
+      },
+      {
+        $project: {
+          year: { $year: '$reservationDate' },
+          quarter: {
+            $ceil: { $divide: [{ $month: '$reservationDate' }, 3] },
+          },
+          price: 1,
+        },
+      },
+      {
+        $group: {
+          _id: {
+            year: '$year',
+            quarter: '$quarter',
+          },
+          totalItems: { $sum: 1 },
+          totalRevenue: { $sum: '$price' },
+        },
+      },
+      {
+        $sort: {
+          '_id.year': 1,
+          '_id.quarter': 1,
+        },
+      },
+    ]);
+
+    const aggregateAvailableYears = this.transactionItemModel.aggregate([
+      {
+        $match: {
+          serviceStatus: ReservationStatus.COMPLETED,
+          reservationDate: { $ne: null },
+        },
+      },
+      {
+        $project: {
+          year: { $year: '$reservationDate' },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            year: '$year',
+          },
+        },
+      },
+      {
+        $sort: { '_id.year': -1 },
+      },
+    ]);
+
     const [
       totalProducts,
       totalEmployees,
@@ -80,6 +146,8 @@ export class DashboardService {
       totalUsers,
       totalOrders,
       orders,
+      quarterlyStats,
+      availableYears,
     ] = await Promise.all([
       this.productModel.countDocuments(),
       this.employeeModel.countDocuments(),
@@ -91,6 +159,8 @@ export class DashboardService {
         serviceStatus: ReservationStatus.SCHEDULED,
       }),
       this.transactionItemModel.find(query).exec(),
+      aggregateQuarter,
+      aggregateAvailableYears,
     ]);
 
     const totalRevenue = orders.reduce(
@@ -105,6 +175,8 @@ export class DashboardService {
       totalUsers,
       totalOrders,
       totalRevenue,
+      quarterlyStats,
+      availableYears,
     };
   }
 }
