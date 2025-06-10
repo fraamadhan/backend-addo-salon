@@ -463,7 +463,6 @@ export class TransactionService {
             ReservationStatus.PAID,
             ReservationStatus.UNPAID,
             ReservationStatus.EXPIRED,
-            ReservationStatus.SCHEDULED,
           ],
         },
       });
