@@ -66,6 +66,14 @@ export class CartService {
       );
     }
 
+    const existingCart = await this.cartModel
+      .find({
+        userId: userObjectId,
+        reservationDate: body.reservationDate,
+      })
+      .select('reservationDate estimation')
+      .exec();
+
     this.checkIsInvalidDay(body.reservationDate);
 
     await this.checkIsNearToCloseTimeOrConflict(
@@ -75,9 +83,16 @@ export class CartService {
 
     const product = await this.productModel
       .findById(body.productId)
-      .select('price -_id')
+      .select('price estimation -_id')
       .lean()
       .exec();
+
+    if (existingCart.length > 0) {
+      throw new HttpException(
+        'Terdapat pesanan dengan jadwal yang sama di keranjang anda. Silakan ubah jadwal salah satu pesanan sesuai estimasi',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
 
     if (product) {
       body['price'] = product.price;
