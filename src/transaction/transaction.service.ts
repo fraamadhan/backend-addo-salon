@@ -956,7 +956,7 @@ export class TransactionService {
 
   async findUnreviewedItem(userId: string, params: PaymentPaginationParams) {
     const page = params.page ?? 1;
-    const limit = params.limit ?? 1;
+    const limit = params.limit ?? 10;
     const query: Query = {
       $and: [
         {

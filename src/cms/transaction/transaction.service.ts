@@ -549,11 +549,28 @@ export class CmsTransactionService {
     });
 
     const subTotal = mappedTransactionItems.reduce(
-      (accum, item) => accum + item.product.price,
+      (accum, item) => accum + item.price,
       0,
     );
 
-    const transactionFee = result.total_price - subTotal;
+    const canceledItems = mappedTransactionItems.filter(
+      (item) => item.serviceStatus === ReservationStatus.CANCELED,
+    );
+
+    const totalPriceCanceledItems = canceledItems.reduce(
+      (accum, item) => accum + item.price,
+      0,
+    );
+
+    let transactionFee: number = 0;
+
+    if (result.paymentMethod === 'bank_transfer') {
+      transactionFee = 4000;
+    } else if (result.paymentMethod === 'qris') {
+      transactionFee = subTotal * 0.02;
+    } else if (result.paymentMethod === 'gopay') {
+      transactionFee = subTotal * 0.07;
+    }
 
     return {
       ...transaction,
@@ -563,6 +580,7 @@ export class CmsTransactionService {
       items: mappedTransactionItems,
       subTotal,
       transactionFee,
+      canceledItemsPrice: totalPriceCanceledItems,
       totalPrice: result.total_price,
     };
   }
@@ -742,10 +760,10 @@ export class CmsTransactionService {
         (item) => item.serviceStatus === ReservationStatus.IN_PROGRESS,
       );
       // if all the transaction cancel, update all canceled
-      const canceledItems = items.filter(
+      const allCanceled = items.every(
         (item) => item.serviceStatus === ReservationStatus.CANCELED,
       );
-      // if there's no in progress status, check if there' s service status with COMPLETED
+      // if there's no in progress status, check if there's service status with COMPLETED
       const hasCompleted = items.some(
         (item) => item.serviceStatus === ReservationStatus.COMPLETED,
       );
@@ -755,19 +773,23 @@ export class CmsTransactionService {
           item.serviceStatus === ReservationStatus.CANCELED,
       );
 
-      if (hasInProgress) {
-        return true;
-      }
-
-      if (canceledItems.length > 0 && hasCompleted) {
-        const totalCanceledPrice = canceledItems.reduce(
-          (acc, item) => acc + (item.price ?? 0),
-          0,
-        );
+      if (status === ReservationStatus.CANCELED) {
+        const totalCanceledPrice = data?.price;
 
         await this.transactionModel.updateOne(
           { _id: transactionId },
           { $inc: { total_price: -totalCanceledPrice } },
+        );
+      }
+
+      if (hasInProgress) {
+        return true;
+      }
+
+      if (allCanceled) {
+        await this.transactionModel.updateOne(
+          { _id: transactionId },
+          { status: ReservationStatus.CANCELED },
         );
 
         return true;

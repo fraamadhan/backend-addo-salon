@@ -41,6 +41,8 @@ export type Employee = {
 };
 
 export type TransactionItemWithPopulatedRefs = {
+  serviceStatus: ReservationStatus;
+  price: number;
   productId: Product;
   employeeId: Employee;
   [key: string]: any;
