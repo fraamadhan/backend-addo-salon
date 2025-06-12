@@ -39,6 +39,7 @@ import { Cart, CartDocument } from 'src/schemas/cart.schema';
 import { Query } from 'src/types/general';
 import { SortType } from 'src/types/sorttype';
 import { ScheduleQueryParams } from 'src/types/transaction';
+import { dateFormatter } from 'src/utils/date-formatter';
 
 @Injectable()
 export class TransactionService {
@@ -577,7 +578,11 @@ export class TransactionService {
       $and: [
         {
           serviceStatus: {
-            $in: [ReservationStatus.PAID, ReservationStatus.SCHEDULED],
+            $in: [
+              ReservationStatus.PAID,
+              ReservationStatus.SCHEDULED,
+              ReservationStatus.IN_PROGRESS,
+            ],
           },
         },
       ],
@@ -1141,6 +1146,20 @@ export class TransactionService {
         $unwind: '$transaction',
       },
       {
+        $lookup: {
+          from: 'employees',
+          localField: 'employeeId',
+          foreignField: '_id',
+          as: 'employee',
+        },
+      },
+      {
+        $unwind: {
+          path: '$employee',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
         $match: {
           serviceStatus: {
             $in: [ReservationStatus.SCHEDULED, ReservationStatus.IN_PROGRESS],
@@ -1161,15 +1180,22 @@ export class TransactionService {
           },
         },
       },
-      { $limit: 1 },
+      {
+        $group: {
+          _id: '$employeeId',
+        },
+      },
     ]);
 
-    if (conflict.length !== 0) {
-      const conflictItem = conflict[0] as {
-        reservationDate?: string | number | Date;
-      };
-      throw new Error(
-        `${message.length !== 0 ? `${message}. Jadwal Bentrok: ${conflictItem?.reservationDate ? new Date(conflictItem.reservationDate).toLocaleString() : ''}` : `Jadwal pesanan anda pada bentrok dengan jadwal pesanan pada waktu ${conflictItem?.reservationDate ? new Date(conflictItem.reservationDate).toLocaleString() : ''}. Pilih jadwal lain!`}`,
+    const busyEmployeeCount = conflict.length;
+    const totalEmployee = await this.employeeModel.countDocuments({});
+
+    const isAvailable = busyEmployeeCount < totalEmployee;
+
+    if (!isAvailable) {
+      throw new HttpException(
+        `${message.length !== 0 ? `${message}. Tidak ada pegawai tersedia di jadwal ${dateFormatter(new Date(reservationDate))}. Silakan cek jadwal pesanan dan pilih jadwal lain` : `Tidak ada pegawai tersedia di jadwal ${dateFormatter(new Date(reservationDate))}. Silakan cek jadwal pesanan dan pilih jadwal lain`}`,
+        HttpStatus.CONFLICT,
       );
     }
   }

@@ -20,6 +20,10 @@ export class CmsUpdateTransactionDto {
   @IsMongoId()
   @IsOptional()
   employeeId?: Types.ObjectId;
+
+  @IsMongoId()
+  @IsOptional()
+  transactionId?: Types.ObjectId;
 }
 
 export class UpdateScheduleDto {
@@ -33,6 +37,20 @@ export class UpdateScheduleDto {
 
   @IsNumber()
   @IsNotEmpty()
+  estimation!: number;
+}
+
+export class GetChooseEmployee {
+  @IsString()
+  @IsOptional()
+  employeeId?: string;
+
+  @IsDate()
+  @IsOptional()
+  reservationDate!: Date;
+
+  @IsNumber()
+  @IsOptional()
   estimation!: number;
 }
 

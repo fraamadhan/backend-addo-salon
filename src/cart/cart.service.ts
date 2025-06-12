@@ -25,6 +25,8 @@ import {
 } from 'src/schemas/transaction.schema';
 import { ReservationStatus } from 'src/types/enum';
 import { TransactionItems } from 'src/schemas/transaction-items.schema';
+import { Employee, EmployeeDocument } from 'src/schemas/employee.schema';
+import { dateFormatter } from 'src/utils/date-formatter';
 
 @Injectable()
 export class CartService {
@@ -38,6 +40,8 @@ export class CartService {
     private readonly transactionModel: Model<TransactionDocument>,
     @InjectModel(TransactionItems.name)
     private readonly transactionItemModel: Model<TransactionDocument>,
+    @InjectModel(Employee.name)
+    private readonly employeeModel: Model<EmployeeDocument>,
     @InjectConnection() private readonly connection: mongoose.Connection,
   ) {}
 
@@ -243,7 +247,6 @@ export class CartService {
         await this.checkIsNearToCloseTimeOrConflict(
           item.reservationDate,
           item.estimation,
-          'Terdapat item yang bentrok dengan pesanan pengguna lain. Silakan cek kembali jadwal pesanan dan ubah jadwal pesanan',
         );
 
         const updateCart = await this.cartModel
@@ -343,6 +346,20 @@ export class CartService {
         $unwind: '$transaction',
       },
       {
+        $lookup: {
+          from: 'employees',
+          localField: 'employeeId',
+          foreignField: '_id',
+          as: 'employee',
+        },
+      },
+      {
+        $unwind: {
+          path: '$employee',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
         $match: {
           serviceStatus: {
             $in: [ReservationStatus.SCHEDULED, ReservationStatus.IN_PROGRESS],
@@ -363,16 +380,21 @@ export class CartService {
           },
         },
       },
-      { $limit: 1 },
+      {
+        $group: {
+          _id: '$employeeId',
+        },
+      },
     ]);
 
-    if (conflict.length !== 0) {
-      const conflictItem = conflict[0] as {
-        reservationDate?: string | number | Date;
-      };
+    const busyEmployeeCount = conflict.length;
+    const totalEmployee = await this.employeeModel.countDocuments({});
 
+    const isAvailable = busyEmployeeCount < totalEmployee;
+
+    if (!isAvailable) {
       throw new HttpException(
-        `${message.length !== 0 ? `${message}. Jadwal Bentrok: ${conflictItem?.reservationDate ? new Date(conflictItem.reservationDate).toLocaleString() : ''}` : `Jadwal pesanan anda pada bentrok dengan jadwal pesanan pada waktu ${conflictItem?.reservationDate ? new Date(conflictItem.reservationDate).toLocaleString() : ''}. Pilih jadwal lain!`}`,
+        `${message.length !== 0 ? `${message}` : `Tidak ada pegawai tersedia di jadwal ${dateFormatter(new Date(reservationDate))}. Silakan cek jadwal pesanan dan pilih jadwal lain`}`,
         HttpStatus.CONFLICT,
       );
     }
