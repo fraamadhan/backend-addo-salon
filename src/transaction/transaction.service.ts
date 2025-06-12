@@ -968,7 +968,6 @@ export class TransactionService {
           serviceStatus: ReservationStatus.COMPLETED,
           isReviewed: false,
           'transaction.userId': toObjectId(userId),
-          'transaction.status': ReservationStatus.COMPLETED,
         },
       ],
     };
