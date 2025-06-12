@@ -994,6 +994,13 @@ export class CmsTransactionService {
         .lean()
         .exec();
 
+      if (item) {
+        await this.transactionModel.updateOne(
+          { _id: transactionId },
+          { $inc: { total_price: -item?.price } },
+        );
+      }
+
       const items = await this.transactionItemModel.find({
         transactionId: toObjectId(transactionId),
       });
