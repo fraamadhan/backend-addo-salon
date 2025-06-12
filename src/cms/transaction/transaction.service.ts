@@ -32,6 +32,7 @@ import {
   TransactionItemWithPopulatedRefs,
 } from 'src/types/transaction';
 import { OrQuery } from 'src/types/general';
+import { dateFormatter } from 'src/utils/date-formatter';
 
 @Injectable()
 export class CmsTransactionService {
@@ -205,6 +206,20 @@ export class CmsTransactionService {
           },
         },
         {
+          $lookup: {
+            from: 'employees',
+            localField: 'employeeId',
+            foreignField: '_id',
+            as: 'employee',
+          },
+        },
+        {
+          $unwind: {
+            path: '$employee',
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
           $match: params.keyword
             ? {
                 $or: [
@@ -256,6 +271,10 @@ export class CmsTransactionService {
                     _id: '$transaction._id',
                     orderCode: '$transaction.orderCode',
                     status: '$transaction.status',
+                  },
+                  employee: {
+                    _id: '$employee._id',
+                    name: '$employee.name',
                   },
                 },
               },
@@ -666,7 +685,7 @@ export class CmsTransactionService {
       const transaction = await this.transactionModel
         .findOneAndUpdate(
           {
-            _id: id,
+            _id: body.transactionId ? toObjectId(body.transactionId) : '',
           },
           {
             customerName: body.customerName,
@@ -697,7 +716,7 @@ export class CmsTransactionService {
       }
       await this.transactionItemModel.updateMany(
         {
-          transactionId: transaction._id,
+          _id: id,
         },
         {
           employeeId: employeeObjectId,
@@ -895,6 +914,20 @@ export class CmsTransactionService {
           $unwind: '$transaction',
         },
         {
+          $lookup: {
+            from: 'employees',
+            localField: 'employeeId',
+            foreignField: '_id',
+            as: 'employee',
+          },
+        },
+        {
+          $unwind: {
+            path: '$employee',
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
           $match: {
             serviceStatus: {
               $in: [ReservationStatus.SCHEDULED, ReservationStatus.IN_PROGRESS],
@@ -915,12 +948,21 @@ export class CmsTransactionService {
             },
           },
         },
-        { $limit: 1 },
+        {
+          $group: {
+            _id: '$employeeId',
+          },
+        },
       ]);
 
-      if (conflict.length !== 0) {
+      const busyEmployeeCount = conflict.length;
+      const totalEmployee = await this.employeeModel.countDocuments({});
+
+      const isAvailable = busyEmployeeCount < totalEmployee;
+
+      if (!isAvailable) {
         throw new HttpException(
-          `${message.length !== 0 ? message : 'Jadwal pesanan bentrok  dengan pesanan lain. Pilih jadwal lain!'}`,
+          `${message.length !== 0 ? `${message}` : `Tidak ada pegawai tersedia di jadwal ${dateFormatter(new Date(reservationDate))}. Silakan cek jadwal pesanan dan pilih jadwal lain`}`,
           HttpStatus.CONFLICT,
         );
       }

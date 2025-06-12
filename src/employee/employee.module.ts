@@ -4,6 +4,10 @@ import { EmployeeController } from './employee.controller';
 import { JwtService } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Employee, EmployeeSchema } from 'src/schemas/employee.schema';
+import {
+  TransactionItems,
+  TransactionItemsSchema,
+} from 'src/schemas/transaction-items.schema';
 
 @Module({
   imports: [
@@ -11,6 +15,10 @@ import { Employee, EmployeeSchema } from 'src/schemas/employee.schema';
       {
         name: Employee.name,
         schema: EmployeeSchema,
+      },
+      {
+        name: TransactionItems.name,
+        schema: TransactionItemsSchema,
       },
     ]),
   ],

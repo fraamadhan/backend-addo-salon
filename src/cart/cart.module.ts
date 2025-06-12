@@ -14,6 +14,7 @@ import {
   TransactionItems,
   TransactionItemsSchema,
 } from 'src/schemas/transaction-items.schema';
+import { Employee, EmployeeSchema } from 'src/schemas/employee.schema';
 
 @Module({
   imports: [
@@ -37,6 +38,10 @@ import {
       {
         name: TransactionItems.name,
         schema: TransactionItemsSchema,
+      },
+      {
+        name: Employee.name,
+        schema: EmployeeSchema,
       },
     ]),
   ],

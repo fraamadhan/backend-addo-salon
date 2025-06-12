@@ -21,6 +21,7 @@ import { RoleType } from 'src/types/role';
 import { Roles } from 'src/utils/custom-decorator/roles.decorator';
 import Logger from 'src/logger';
 import { PaginationParams } from 'src/types/pagination';
+import { GetChooseEmployee } from 'src/cms/transaction/dto/cms-transaction.dto';
 
 @Controller('employee')
 export class EmployeeController {
@@ -73,9 +74,9 @@ export class EmployeeController {
   @Get('choose')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleType.ADMIN)
-  async chooseEmployees() {
+  async chooseEmployees(@Query() body: GetChooseEmployee) {
     try {
-      const data = await this.employeeService.getEmployees();
+      const data = await this.employeeService.getEmployees(body);
 
       return responseSuccess(HttpStatus.OK, 'Success', data);
     } catch (error) {
