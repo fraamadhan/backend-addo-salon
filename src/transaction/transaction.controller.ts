@@ -83,6 +83,9 @@ export class TransactionController {
       const result = await this.transactionService.handleAfterPayment(body);
 
       if (result) {
+        this.logger.log(
+          `[Transaction Controller] - Handle after payment success`,
+        );
         return responseSuccess(HttpStatus.OK, 'Success');
       } else {
         throw new HttpException('Fraud terdeteksi', HttpStatus.BAD_REQUEST);

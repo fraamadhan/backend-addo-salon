@@ -832,14 +832,6 @@ export class CmsTransactionService {
   }
 
   async updateSchedule(id: string, body: UpdateScheduleDto) {
-    const userObjectId = toObjectId(body.userId);
-
-    if (!userObjectId) {
-      throw new HttpException(
-        'Failed to convert to object id',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
     await this.checkIsNearToCloseTimeOrConflict(
       body.reservationDate,
       body.estimation,
