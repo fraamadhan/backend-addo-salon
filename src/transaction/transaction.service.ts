@@ -209,6 +209,7 @@ export class TransactionService {
   }
 
   async handleAfterPayment(body: Record<string, any>) {
+    this.logger.log(`[Transaction Servce] - handle after payment processed`);
     const transactionStatus = body.transaction_status as string;
     const orderId = body.order_id as string;
     const fraudStatus = body.fraud_status as string;

@@ -27,10 +27,6 @@ export class CmsUpdateTransactionDto {
 }
 
 export class UpdateScheduleDto {
-  @IsMongoId()
-  @IsNotEmpty()
-  userId!: Types.ObjectId;
-
   @IsDate()
   @IsNotEmpty()
   reservationDate!: Date;
