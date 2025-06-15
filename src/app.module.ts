@@ -27,10 +27,32 @@ import { DashboardModule } from './cms/dashboard/dashboard.module';
       cache: true,
       isGlobal: true,
     }),
-    BullModule.forRoot({
-      redis: {
-        host: process.env.REDIS_HOST,
-        port: Number(process.env.REDIS_PORT),
+    BullModule.forRootAsync({
+      useFactory: () => {
+        const redisConfig = process.env.REDIS_URL;
+        const redisUrl = redisConfig ? new URL(redisConfig) : null;
+
+        if (redisUrl) {
+          return {
+            redis: {
+              host: redisUrl.hostname,
+              port: Number(redisUrl.port),
+              password: redisUrl.password,
+            },
+          };
+        }
+        if (!process.env.REDIS_HOST || !process.env.REDIS_PORT) {
+          throw new Error(
+            'Redis configuration is missing in environment variables.',
+          );
+        }
+        return {
+          redis: {
+            host: process.env.REDIS_HOST,
+            port: Number(process.env.REDIS_PORT),
+            password: process.env.REDIS_PASSWORD,
+          },
+        };
       },
     }),
     MongooseModule.forRoot(process.env.MONGO_URL ?? ''),
