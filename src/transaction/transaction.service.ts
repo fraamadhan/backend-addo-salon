@@ -337,6 +337,58 @@ export class TransactionService {
   async getTransactionStatusMidtrans(orderId: string) {
     try {
       const data = await this.midtransService.getStatus(orderId);
+      const transactionStatus = data.transaction_status;
+      const fraudStatus = data.fraud_status;
+      const statusCode = data.status_code;
+      const grossAmount = data.gross_amount;
+      const serverKey = this.config.get<string>(
+        'MIDTRANS_SERVER_KEY',
+      ) as string;
+      const signatureKeyMidtrans = data.signature_key as string;
+
+      const isVerified = verifySignatureKey(
+        signatureKeyMidtrans,
+        grossAmount ? grossAmount : '0',
+        orderId,
+        statusCode,
+        serverKey,
+      );
+
+      if (isVerified) {
+        if (
+          transactionStatus === 'settlement' ||
+          transactionStatus === 'capture'
+        ) {
+          if (fraudStatus === 'accept') {
+            await this.updateAfterHandlePayment(
+              data,
+              ReservationStatus.PAID,
+              ReservationStatus.SCHEDULED,
+            );
+          }
+        } else if (
+          transactionStatus === 'cancel' ||
+          transactionStatus === 'deny'
+        ) {
+          await this.updateAfterHandlePayment(
+            data,
+            ReservationStatus.CANCELED,
+            ReservationStatus.CANCELED,
+          );
+        } else if (transactionStatus === 'expire') {
+          await this.updateAfterHandlePayment(
+            data,
+            ReservationStatus.EXPIRED,
+            ReservationStatus.EXPIRED,
+          );
+        } else if (transactionStatus === 'pending') {
+          await this.updateAfterHandlePayment(
+            data,
+            ReservationStatus.UNPAID,
+            ReservationStatus.PENDING,
+          );
+        }
+      }
 
       return data;
     } catch (error: any) {
