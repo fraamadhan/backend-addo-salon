@@ -866,7 +866,6 @@ export class CmsTransactionService {
     message: string = '',
   ) {
     if (estimation) {
-      const allowedOverlap = Number(process.env.ONE_HOUR);
       const durationMs = estimation * Number(process.env.ONE_HOUR); //customer can overlap one hour before the previous order done
 
       const startTime = new Date(reservationDate);
@@ -931,10 +930,7 @@ export class CmsTransactionService {
               $and: [
                 { $lt: ['$reservationDate', endTime] },
                 {
-                  $gt: [
-                    { $add: ['$reservationDate', durationMs] },
-                    new Date(startTime.getTime() + allowedOverlap),
-                  ],
+                  $gt: [{ $add: ['$reservationDate', durationMs] }, startTime],
                 },
               ],
             },
