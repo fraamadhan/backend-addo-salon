@@ -267,7 +267,7 @@ export class UsersService {
         const hashedPassword = await bcrypt.hash(body.password, 10);
         const isMatch = await bcrypt.compare(
           body.oldPassword,
-          existingUser.password,
+          existingUser?.password || '',
         );
 
         if (!isMatch) {
