@@ -1,5 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { LoginDTO, RegisterDTO } from './dto/auth.dto';
+import { GoogleAuthDto, LoginDTO, RegisterDTO } from './dto/auth.dto';
 import { User, UserDocument } from 'src/schemas/user.schema';
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
@@ -56,12 +56,13 @@ export class AuthService {
 
     //create user
     const result = await this.userModel.create(body);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...user } = result.toObject();
 
     return user;
   }
 
-  async login(body: LoginDTO) {
+  async login(body: LoginDTO, oauth = false) {
     const { email, password } = body;
 
     //check if user exists
@@ -74,7 +75,7 @@ export class AuthService {
     }
 
     //check if user is verified
-    if (!existingUser.is_verified) {
+    if (!oauth && !existingUser.is_verified) {
       const token = await this.generateVerificationToken(
         existingUser.email,
         EmailVerificationType.REGISTER,
@@ -89,21 +90,30 @@ export class AuthService {
     }
 
     //check if password is correct
-    const isMatch = await bcrypt.compare(password, existingUser.password);
-    if (!isMatch) {
-      throw new HttpException(
-        'Email atau kata sandi salah',
-        HttpStatus.UNAUTHORIZED,
+    if (!oauth) {
+      const isMatch = await bcrypt.compare(
+        password,
+        existingUser.password ? existingUser.password : '',
       );
+      if (!isMatch) {
+        throw new HttpException(
+          'Email atau kata sandi salah',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...user } = existingUser;
 
     const payload = user;
 
-    user['access_token'] = await this.jwtService.signAsync(payload);
+    const access_token = await this.jwtService.signAsync(payload);
 
-    return user;
+    return {
+      ...user,
+      access_token,
+    };
   }
 
   async cmsLogin(body: LoginDTO) {
@@ -135,7 +145,10 @@ export class AuthService {
     }
 
     //check if password is correct
-    const isMatch = await bcrypt.compare(password, existingUser.password);
+    const isMatch = await bcrypt.compare(
+      password,
+      existingUser.password ? existingUser.password : '',
+    );
     if (!isMatch) {
       throw new HttpException(
         'Email atau kata sandi salah',
@@ -143,6 +156,7 @@ export class AuthService {
       );
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...user } = existingUser;
 
     const payload = user;
@@ -479,5 +493,26 @@ export class AuthService {
       subject,
       html: templateBody,
     });
+  }
+
+  async validateGoogleUser(body: GoogleAuthDto) {
+    const user = await this.userModel.findOne({ email: body.email }).exec();
+    if (user) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password: _, ...data } = user.toObject();
+      return data;
+    }
+    const newUser = await this.userModel.create({
+      email: body.email,
+      name: body.name,
+      role: RoleType.USER,
+      is_verified: true,
+      email_verified_at: new Date(Date.now()),
+      provider_id: body.provider_id,
+      provider: body.provider,
+    });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password: _, ...data } = newUser.toObject();
+    return data;
   }
 }

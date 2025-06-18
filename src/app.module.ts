@@ -19,6 +19,7 @@ import { MidtransModule } from './transaction/midtrans/midtrans.module';
 import { EmployeeModule } from './employee/employee.module';
 import { CmsTransactionModule } from './cms/transaction/transaction.module';
 import { DashboardModule } from './cms/dashboard/dashboard.module';
+import googleOauthConfig from './config/google-oauth-config';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { DashboardModule } from './cms/dashboard/dashboard.module';
       envFilePath: ['.env.development'],
       cache: true,
       isGlobal: true,
+      load: [googleOauthConfig],
     }),
     BullModule.forRootAsync({
       useFactory: () => {
