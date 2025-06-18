@@ -8,6 +8,9 @@ import {
   Get,
   Query,
   HttpException,
+  Req,
+  UseGuards,
+  Redirect,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
@@ -18,7 +21,9 @@ import {
 } from './dto/auth.dto';
 import { responseError, responseSuccess } from 'src/utils/response';
 import Logger from 'src/logger';
-import { EmailVerificationType } from 'src/types/general';
+import { EmailVerificationType, UserPayload } from 'src/types/general';
+import { Request } from 'express';
+import { GoogleAuthGuard } from './google-auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -79,6 +84,36 @@ export class AuthController {
         'Internal Server Error',
       );
     }
+  }
+
+  @Get('/login/google')
+  @UseGuards(GoogleAuthGuard)
+  async googleLogin() {}
+
+  @Get('/google/callback')
+  @UseGuards(GoogleAuthGuard)
+  @Redirect()
+  async googleLoginCallback(@Req() req: Request) {
+    const user = req.user as UserPayload;
+    if (!user) {
+      this.logger.error(
+        '[AuthController - googleLoginCallback] User not found in request',
+      );
+      return responseError(HttpStatus.UNAUTHORIZED, 'User not authenticated');
+    }
+
+    const data = await this.authService.login(
+      {
+        email: user.email,
+        password: '',
+      },
+      true,
+    );
+
+    return {
+      url: `${process.env.FE_URL}/auth/oauth-success?token=${data.access_token}`,
+      statusCode: HttpStatus.FOUND,
+    };
   }
 
   @Post('/cms/login')

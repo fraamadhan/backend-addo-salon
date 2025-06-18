@@ -19,11 +19,10 @@ export class User {
   email!: string;
 
   @Prop({
-    required: true,
     default: null,
     minlength: 4,
   })
-  password!: string;
+  password?: string;
 
   @Prop({
     default: null,
@@ -54,6 +53,18 @@ export class User {
     maxlength: 10,
   })
   role!: string;
+
+  @Prop({
+    default: null,
+    maxlength: 255,
+  })
+  google_id?: string;
+
+  @Prop({
+    default: null,
+    maxlength: 20,
+  })
+  provider?: string;
 
   @Prop({
     default: false,

@@ -6,6 +6,14 @@ import {
   Matches,
 } from 'class-validator';
 
+export class GoogleAuthDto {
+  email!: string;
+  name!: string;
+  password!: string;
+  provider?: string;
+  provider_id?: string;
+}
+
 export class RegisterDTO {
   @IsString()
   @IsNotEmpty()

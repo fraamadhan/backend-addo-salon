@@ -15,6 +15,7 @@ import {
 } from 'src/schemas/password-reset.schema';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './jwt.strategy';
+import { GoogleStrategy } from './google.strategy';
 
 @Module({
   imports: [
@@ -46,6 +47,11 @@ import { JwtStrategy } from './jwt.strategy';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, EmailVerificationProcessor, JwtStrategy],
+  providers: [
+    AuthService,
+    EmailVerificationProcessor,
+    JwtStrategy,
+    GoogleStrategy,
+  ],
 })
 export class AuthModule {}
