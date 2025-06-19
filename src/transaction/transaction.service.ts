@@ -278,7 +278,16 @@ export class TransactionService {
     try {
       await this.transactionModel
         .findOneAndUpdate(
-          { _id: toObjectId(transactionId) },
+          {
+            _id: toObjectId(transactionId),
+            status: {
+              $nin: [
+                ReservationStatus.CANCELED,
+                ReservationStatus.EXPIRED,
+                ReservationStatus.COMPLETED,
+              ],
+            },
+          },
           {
             status: transactionStatus,
             settlement_time_midtrans: body.settlement_time,
@@ -289,7 +298,16 @@ export class TransactionService {
 
       await this.transactionItemModel
         .updateMany(
-          { transactionId: toObjectId(transactionId) },
+          {
+            transactionId: toObjectId(transactionId),
+            serviceStatus: {
+              $nin: [
+                ReservationStatus.CANCELED,
+                ReservationStatus.EXPIRED,
+                ReservationStatus.COMPLETED,
+              ],
+            },
+          },
           { serviceStatus: itemStatus },
           { session: session },
         )
