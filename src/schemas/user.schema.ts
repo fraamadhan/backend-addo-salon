@@ -58,7 +58,7 @@ export class User {
     default: null,
     maxlength: 255,
   })
-  google_id?: string;
+  provider_id?: string;
 
   @Prop({
     default: null,
