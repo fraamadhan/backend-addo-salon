@@ -39,13 +39,9 @@ export class LoginDTO {
 
   @IsString()
   @IsNotEmpty()
-  @MinLength(4)
-  @Matches(/((?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
-    message: 'password too weak',
-  })
+  @MinLength(8)
   password!: string;
 }
-
 export class ForgotPasswordDTO {
   @IsEmail()
   @IsNotEmpty()
