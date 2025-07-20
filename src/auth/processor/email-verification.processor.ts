@@ -16,13 +16,13 @@ export class EmailVerificationProcessor {
   constructor(private readonly authService: AuthService) {}
 
   private logger = new Logger();
-  @Process('register')
+  @Process({ name: 'register', concurrency: 3 })
   async handleEmailVerification(job: Job) {
     const { email, token } = job.data;
     await this.authService.sendEmailVerification(email, token);
   }
 
-  @Process('forgot-password')
+  @Process({ name: 'forgot-password', concurrency: 3 })
   async handleEmailVerificationForgotPassword(job: Job) {
     const { email, token } = job.data;
     await this.authService.sendEmailVerificationForgotPassword(email, token);

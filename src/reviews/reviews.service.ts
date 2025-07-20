@@ -165,7 +165,9 @@ export class ReviewsService {
         .lean()
         .exec();
 
-      const userIds = data.map((value) => value.userId._id);
+      const userIds = data
+        .filter((value) => value.userId !== null)
+        .map((value) => value.userId._id);
 
       const userAssets = await this.userAssetsModel
         .find({
@@ -184,10 +186,12 @@ export class ReviewsService {
         return {
           ...review,
           product,
-          user: {
-            ...user,
-            assetRef: assetMap.get(user._id.toString()) || null,
-          },
+          user: user
+            ? {
+                ...user,
+                assetRef: assetMap.get(user._id.toString()) || null,
+              }
+            : null,
         };
       });
 
@@ -218,7 +222,9 @@ export class ReviewsService {
         },
       });
 
-      const userIds = result.docs.map((doc) => doc.userId._id);
+      const userIds = result.docs
+        .filter((doc) => doc.userId != null)
+        .map((doc) => doc.userId._id);
 
       const userAssets = await this.userAssetsModel
         .find({
@@ -235,10 +241,12 @@ export class ReviewsService {
         ({ productId: product, userId: user, ...review }) => ({
           ...review,
           product,
-          user: {
-            ...user,
-            assetRef: assetMap.get(user._id.toString()) || null,
-          },
+          user: user
+            ? {
+                ...user,
+                assetRef: assetMap.get(user._id.toString()) || null,
+              }
+            : null,
         }),
       );
 
