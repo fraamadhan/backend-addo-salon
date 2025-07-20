@@ -36,10 +36,11 @@ import Logger from 'src/logger';
 import { MidtransService } from './midtrans/midtrans.service';
 import { MidtransChargeResponseType } from './midtrans/dto/response';
 import { Cart, CartDocument } from 'src/schemas/cart.schema';
-import { Query } from 'src/types/general';
+import { PopulatedItem, PopulatedTransaction, Query } from 'src/types/general';
 import { SortType } from 'src/types/sorttype';
 import { ScheduleQueryParams } from 'src/types/transaction';
 import { dateFormatter } from 'src/utils/date-formatter';
+import { newOrderNotification } from 'src/utils/whatsapp-order-notification';
 
 @Injectable()
 export class TransactionService {
@@ -76,20 +77,17 @@ export class TransactionService {
     const reservationDates = body.items.map((item) => item.reservationDate);
     const products = body.items.map((item) => toObjectId(item.productId));
 
+    for (const item of body.items) {
+      await this.checkIsNearToCloseTimeOrConflict(
+        item.reservationDate,
+        item.estimation,
+        'Maaf pesanananmu bentrok. Silakan pilih jadwal lain',
+      );
+    }
+
     const session = await this.connection.startSession();
     session.startTransaction();
-
     try {
-      await Promise.all(
-        body.items.map(async (item) => {
-          await this.checkIsNearToCloseTimeOrConflict(
-            item.reservationDate,
-            item.estimation,
-            'Maaf pesanananmu bentrok. Silakan pilih jadwal lain',
-          );
-        }),
-      );
-
       const result = await this.transactionModel
         .findOne({
           _id: body.transactionId,
@@ -226,12 +224,47 @@ export class TransactionService {
       serverKey,
     );
 
+    const transactionInfo = await this.transactionModel
+      .findById(orderId)
+      .populate('userId', 'name')
+      .lean<PopulatedTransaction>();
+
+    if (!transactionInfo) {
+      throw new HttpException(
+        'Transaksi tidak ditemukan',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const itemInfo = await this.transactionItemModel
+      .findOne({
+        transactionId: toObjectId(transactionInfo?._id),
+      })
+      .select('reservationDate productId')
+      .populate('productId', 'name')
+      .lean<PopulatedItem>();
+
+    if (!itemInfo) {
+      throw new HttpException(
+        'Transaksi tidak ditemukan',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
     if (isVerified) {
       if (
         transactionStatus === 'settlement' ||
         transactionStatus === 'capture'
       ) {
         if (fraudStatus === 'accept') {
+          const orderData = {
+            customer_name: transactionInfo.userId.name ?? 'Anonim',
+            reservation_date: dateFormatter(itemInfo?.reservationDate),
+            service_name: itemInfo.productId.name,
+            order_id: transactionInfo._id.toString(),
+          };
+
+          await newOrderNotification(orderData);
           await this.updateAfterHandlePayment(
             body,
             ReservationStatus.PAID,
@@ -372,12 +405,48 @@ export class TransactionService {
         serverKey,
       );
 
+      const transactionInfo = await this.transactionModel
+        .findById(data.order_id)
+        .populate('userId', 'name')
+        .lean<PopulatedTransaction>();
+
+      if (!transactionInfo) {
+        throw new HttpException(
+          'Transaksi tidak ditemukan',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      const itemInfo = await this.transactionItemModel
+        .findOne({
+          transactionId: toObjectId(transactionInfo?._id),
+        })
+        .select('reservationDate productId')
+        .populate('productId', 'name')
+        .lean<PopulatedItem>();
+
+      if (!itemInfo) {
+        throw new HttpException(
+          'Transaksi tidak ditemukan',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
       if (isVerified) {
         if (
           transactionStatus === 'settlement' ||
           transactionStatus === 'capture'
         ) {
           if (fraudStatus === 'accept') {
+            const orderData = {
+              customer_name: transactionInfo.userId.name ?? 'Anonim',
+              reservation_date: dateFormatter(itemInfo?.reservationDate),
+              service_name: itemInfo.productId.name,
+              order_id: transactionInfo._id.toString(),
+            };
+
+            await newOrderNotification(orderData);
+
             await this.updateAfterHandlePayment(
               data,
               ReservationStatus.PAID,

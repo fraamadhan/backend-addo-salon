@@ -5,6 +5,7 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import {
+  CartItem,
   CreateCartDto,
   UpdateCartDto,
   UpdateCheckoutCartDto,
@@ -70,14 +71,6 @@ export class CartService {
       );
     }
 
-    const existingCart = await this.cartModel
-      .find({
-        userId: userObjectId,
-        reservationDate: body.reservationDate,
-      })
-      .select('reservationDate estimation')
-      .exec();
-
     this.checkIsInvalidDay(body.reservationDate);
 
     await this.checkIsNearToCloseTimeOrConflict(
@@ -90,13 +83,6 @@ export class CartService {
       .select('price estimation -_id')
       .lean()
       .exec();
-
-    if (existingCart.length > 0) {
-      throw new HttpException(
-        'Terdapat pesanan dengan jadwal yang sama di keranjang anda. Silakan ubah jadwal salah satu pesanan sesuai estimasi',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
 
     if (product) {
       body['price'] = product.price;
@@ -212,6 +198,21 @@ export class CartService {
     const userObjectId = toObjectId(userId);
     if (!userObjectId) {
       throw new HttpException('Missing user id', HttpStatus.BAD_REQUEST);
+    }
+
+    const totalEmployees = await this.employeeModel.countDocuments({});
+
+    const hasOrderExceedingTotalEmployee = this.hasOrderExceedingTotalEmployee(
+      items,
+      Number(process.env.ONE_HOUR),
+      totalEmployees,
+    );
+
+    if (hasOrderExceedingTotalEmployee) {
+      throw new HttpException(
+        `Jumlah pesanan melebihi jumlah pegawai yang tersedia (${totalEmployees} pegawai). Silakan ubah jadwal pesanan`,
+        HttpStatus.CONFLICT,
+      );
     }
 
     const session = await this.connection.startSession();
@@ -394,5 +395,37 @@ export class CartService {
         HttpStatus.CONFLICT,
       );
     }
+  }
+
+  hasOrderExceedingTotalEmployee(
+    items: CartItem[],
+    oneHours: number,
+    totalEmployees: number,
+  ) {
+    const timeline: { time: number; type: 'start' | 'end' }[] = [];
+
+    for (const item of items) {
+      const startTime = new Date(item.reservationDate).getTime();
+      const endTime = startTime + item.estimation * oneHours;
+      timeline.push({ time: startTime, type: 'start' });
+      timeline.push({ time: endTime, type: 'end' });
+    }
+
+    timeline.sort((a, b) => a.time - b.time || (a.type === 'start' ? -1 : 1));
+
+    let activeOrders = 0;
+
+    for (const event of timeline) {
+      if (event.type === 'start') {
+        activeOrders++;
+        if (activeOrders > totalEmployees) {
+          return true;
+        }
+      } else {
+        activeOrders--;
+      }
+    }
+
+    return false;
   }
 }
