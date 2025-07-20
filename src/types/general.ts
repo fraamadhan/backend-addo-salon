@@ -32,3 +32,20 @@ export type UserPayload = {
   iat: number;
   exp: number;
 };
+
+export interface PopulatedTransaction {
+  _id: string;
+  userId: {
+    _id: string;
+    name: string;
+  };
+}
+
+export interface PopulatedItem {
+  _id: string;
+  reservationDate: string;
+  productId: {
+    _id: string;
+    name: string;
+  };
+}
