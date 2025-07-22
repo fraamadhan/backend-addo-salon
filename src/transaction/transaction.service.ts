@@ -264,7 +264,9 @@ export class TransactionService {
             order_id: transactionInfo._id.toString(),
           };
 
-          await newOrderNotification(orderData);
+          if (process.env.WHATSAPP_ACCESS_TOKEN) {
+            await newOrderNotification(orderData);
+          }
           await this.updateAfterHandlePayment(
             body,
             ReservationStatus.PAID,
@@ -445,7 +447,9 @@ export class TransactionService {
               order_id: transactionInfo._id.toString(),
             };
 
-            await newOrderNotification(orderData);
+            if (process.env.WHATSAPP_ACCESS_TOKEN) {
+              await newOrderNotification(orderData);
+            }
 
             await this.updateAfterHandlePayment(
               data,
