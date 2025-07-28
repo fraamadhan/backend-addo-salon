@@ -1,98 +1,89 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Aplikasi Back-End Website Addo Salon
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+## Profil Developer
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+Fakhri Fajar Ramadhan <br>
+140810210046 <br>
+Teknik Informatika Unpad <br>
 
-## Description
+## Deskripsi Aplikasi
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Repositori ini berisi layanan logika bisnis untuk aplikasi web pelanggan dan admin Addo Salon, termasuk integrasi dengan payment gateway Midtrans.
 
-## Project setup
+## Tujuan
 
-```bash
-$ npm install
-```
+- Menyediakan logika bisnis untuk pemesanan jasa salon bagi pelanggan
+- Menyediakan logika bisnis untuk mengelola data salon bagi admin
 
-## Compile and run the project
+## Fitur Aplikasi
 
-```bash
-# development
-$ npm run start
+- OAuth: Fitur untuk melakukan login langsung menggunakan akun Google
+- Autentikasi: Sistem login dengan JWT token dan session management
+- Registrasi: Fitur untuk pelanggan mendaftarkan akun
+- Verifikasi email: Fitur untuk pengguna melakukan verifikasi email
+- Reset Password: Fitur untuk pelanggan memulihkan password
+- Data management: Fitur untuk mengelola data yang penting untuk salon
+- Operasi CRUD: Fitur tambah, edit, hapus, dan membaca data pengguna, layanan, pesanan, transaksi, dan pegawai
+- Pembayaran: Fitur pembayaran di dalam aplikasi, terintegrasi dengan Midtrans
+- Dashboard: Fitur untuk menyediakan data-data penting di halaman dashboard admin
 
-# watch mode
-$ npm run start:dev
+## Teknologi yang Digunakan
 
-# production mode
-$ npm run start:prod
-```
-
-## Run tests
-
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
+- NestJs: Framework back-end berbasis NodeJs
+- MongoDB: Database NoSQL
+- Mongoose: ODM untuk MongoDB
+- Midtrans: Payment gateway untuk pembayaran digital
+- Supabase Storage: Layanan pihak ketiga untuk menyimpan berkas
 
 ## Deployment
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+Saat ini aplikasi back-end di-deploy menggunakan Railway
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Kebutuhan Environment Variables
+PORT= <br>
+NODE_ENV= <br>
+MONGO_URL= <br>
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
+MAIL_HOST= <br> 
+MAIL_PORT= <br>
+MAIL_USER= <br>
+MAIL_PASS= <br>
+MAIL_SECURE= <br>
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+FE_URL= <br> 
 
-## Resources
+REDIS_HOST= <br>
+REDIS_PORT= <br>
+REDIS_PASSWORD= <br>
+REDIS_URL= <br>
 
-Check out a few resources that may come in handy when working with NestJS:
+JWT_SECRET= <br>
+JWT_EXPIRES_IN= <br>
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+CORS_ORIGIN_OPTIONS= <br>
 
-## Support
+SUPABASE_URL= <br>
+SUPABASE_ANON_KEY= <br> 
+SUPABASE_BUCKET_NAME= <br>
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+GOOGLE_OAUTH_CLIENT_ID= <br>
+GOOGLE_OAUTH_SCOPE= <br>
+GOOGLE_OAUTH_CALLBACK_URL= <br>
 
-## Stay in touch
+ONE_HOUR=
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+MIDTRANS_MERCHANT_ID= <br>
+MIDTRANS_CLIENT_KEY= <br>
+MIDTRANS_SERVER_KEY= <br>
+MIDTRANS_MODE= <br>
+MIDTRANS_BASE_URL_SANDBOX= <br>
+MIDTRANS_BASE_URL_PRODUCTION= <br>
+MIDTRANS_GOPAY_CALLBACK_URL= <br>
 
-## License
+HTTP_TIMEOUT= <br>
+MAX_REDIRECTS= <br>
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+WHATSAPP_API_URL= <br>
+WHATSAPP_API_VERSION= <br>
+WHATSAPP_PHONE_NUMBER_ID= <br>
+WHATSAPP_ACCESS_TOKEN= <br>
