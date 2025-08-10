@@ -85,55 +85,54 @@ export class TransactionService {
       );
     }
 
+    const result = await this.transactionModel
+      .findOne({
+        _id: body.transactionId,
+      })
+      .populate('userId', '-password')
+      .lean()
+      .exec();
+
+    if (!result) {
+      throw new HttpException(
+        'Transaksi tidak ditemukan',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const { userId: user, ...transaction } = result;
+
+    const transactionItems = await this.transactionItemModel
+      .find({
+        transactionId: transaction._id,
+      })
+      .populate('productId')
+      .lean()
+      .exec();
+
+    const mappedTransactionItems = transactionItems.map((item) => {
+      const { productId: product, ...rest } = item;
+
+      return {
+        ...rest,
+        product,
+      };
+    });
+
+    const { chargeBody, orderCode } = this.midtransChargeBodyFormat(
+      body,
+      user,
+      transaction,
+      mappedTransactionItems,
+    );
+
+    const response: MidtransChargeResponseType =
+      await this.midtransService.charge(chargeBody);
+
     const session = await this.connection.startSession();
     session.startTransaction();
+
     try {
-      const result = await this.transactionModel
-        .findOne({
-          _id: body.transactionId,
-        })
-        .populate('userId', '-password')
-        .session(session)
-        .lean()
-        .exec();
-
-      if (!result) {
-        throw new HttpException(
-          'Transaksi tidak ditemukan',
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      const { userId: user, ...transaction } = result;
-
-      const transactionItems = await this.transactionItemModel
-        .find({
-          transactionId: transaction._id,
-        })
-        .populate('productId')
-        .session(session)
-        .lean()
-        .exec();
-
-      const mappedTransactionItems = transactionItems.map((item) => {
-        const { productId: product, ...rest } = item;
-
-        return {
-          ...rest,
-          product,
-        };
-      });
-
-      const { chargeBody, orderCode } = this.midtransChargeBodyFormat(
-        body,
-        user,
-        transaction,
-        mappedTransactionItems,
-      );
-
-      const response: MidtransChargeResponseType =
-        await this.midtransService.charge(chargeBody);
-
       if (response.status_code === '201') {
         await this.transactionModel.findOneAndUpdate(
           {
